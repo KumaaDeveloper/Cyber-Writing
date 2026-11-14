@@ -1,5 +1,11 @@
 import { readFile, readdir } from "node:fs/promises";
 import bcrypt from "bcryptjs";
+import { createHash } from "node:crypto";
+const resetKey = (id: string, resetId: string) =>
+  "admin_password_reset:" +
+  id +
+  ":" +
+  createHash("sha256").update(resetId).digest("hex");
 export interface SetupClient {
   query: (
     text: string,
@@ -37,14 +43,55 @@ export async function bootstrapAdmin(
   client: SetupClient,
   username: string,
   password?: string,
+  resetId?: string,
 ) {
   await client.query("BEGIN");
   try {
     await client.query("SELECT pg_advisory_xact_lock(671024)");
     const existing = await client.query("SELECT id FROM admins LIMIT 1");
     if (existing.rows.length) {
+      if (!resetId) {
+        await client.query("COMMIT");
+        return "existing";
+      }
+      if (resetId.length > 100) throw new Error("BOOTSTRAP_RESET_ID_INVALID");
+      const account = await client.query(
+        "SELECT id FROM admins WHERE username=$1",
+        [username.trim()],
+      );
+      if (!account.rows.length) throw new Error("BOOTSTRAP_ADMIN_NOT_FOUND");
+      const key = resetKey(account.rows[0].id, resetId);
+      const previous = await client.query(
+        "SELECT value FROM settings WHERE key=$1",
+        [key],
+      );
+      if (previous.rows.length > 0) {
+        await client.query("COMMIT");
+        return "existing";
+      }
+      if (
+        !password ||
+        password.length < 12 ||
+        Buffer.byteLength(password, "utf8") > 72
+      )
+        throw new Error("BOOTSTRAP_PASSWORD_INVALID");
+      await client.query("UPDATE admins SET password_hash=$1 WHERE id=$2", [
+        await bcrypt.hash(password, 12),
+        account.rows[0].id,
+      ]);
+      await client.query("DELETE FROM admin_sessions WHERE admin_id=$1", [
+        account.rows[0].id,
+      ]);
+      await client.query(
+        "INSERT INTO settings(key,value) VALUES($1,$2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        [key, "done"],
+      );
+      await client.query(
+        "INSERT INTO audit_log(admin_id,action,target_id) VALUES($1,'admin.password.reset.deploy',$2)",
+        [account.rows[0].id, String(account.rows[0].id)],
+      );
       await client.query("COMMIT");
-      return "existing";
+      return "reset";
     }
     if (!password) {
       await client.query("COMMIT");
@@ -55,10 +102,17 @@ export async function bootstrapAdmin(
     }
     if (!username.trim() || username.length > 100)
       throw new Error("BOOTSTRAP_USERNAME_INVALID");
-    await client.query(
-      "INSERT INTO admins(username,password_hash) VALUES($1,$2)",
+    const created = await client.query(
+      "INSERT INTO admins(username,password_hash) VALUES($1,$2) RETURNING id",
       [username.trim(), await bcrypt.hash(password, 12)],
     );
+    if (resetId) {
+      if (resetId.length > 100) throw new Error("BOOTSTRAP_RESET_ID_INVALID");
+      await client.query("INSERT INTO settings(key,value) VALUES($1,$2)", [
+        resetKey(created.rows[0].id, resetId),
+        "done",
+      ]);
+    }
     await client.query("COMMIT");
     return "created";
   } catch (error) {

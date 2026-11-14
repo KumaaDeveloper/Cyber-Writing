@@ -3815,3 +3815,13 @@ footer > span:last-child {
 .plain-login-form .btn svg{display:none}
 @media(max-width:1120px){.plain-admin-login>header{margin:0 32px}}
 @media(max-width:600px){.plain-admin-login>header{height:76px;margin:0 22px}.plain-login-form{min-height:calc(100dvh - 76px);padding:40px 24px 90px}.plain-login-form form{max-width:360px}.plain-login-form input{font-size:16px}}
+/* Neutral admin summary with short, functional labels. */
+.active-session-card{background:#141418;border-color:#303038}
+.active-session-card h3{font-size:14px;color:#d0d0da}
+.active-session-card h2{font-size:21px;margin:20px 0 12px}
+.active-session-card p,.active-session-card .session-detail{color:#94949f}
+.active-session-card .no-active-session{margin:24px 0 0;font-size:13px}
+.active-session-card .btn{background:#202026;border-color:#34343c;margin-top:20px}
+.stat-card>strong{margin-bottom:0}
+.session-card-bottom{flex-wrap:wrap}
+.session-card-bottom>span{flex:1 0 100%}

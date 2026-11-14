@@ -73,13 +73,18 @@ export default function Admin() {
         }}
       />
     );
-  const section = path.split("/")[2] || "dashboard";
   const docId = path.split("/")[3];
+  const requestedSection = path.split("/")[2] || "dashboard";
+  const section =
+    requestedSection === "submissions" && !docId
+      ? "sessions"
+      : requestedSection;
+  const sessionSubmissions =
+    section === "sessions" && !!docId && path.split("/")[4] === "submissions";
   if (section === "submissions" && docId) return <Workspace id={docId} admin />;
   const nav = [
     ["dashboard", LayoutDashboard, "Dashboard"],
     ["sessions", Layers, "Kelola sesi"],
-    ["submissions", FileText, "Seluruh tulisan"],
     ["starred", Star, "Tulisan berbintang"],
     ["ai-reviews", Sparkles, "Pemeriksaan AI"],
     ["settings", Settings, "Pengaturan"],
@@ -95,7 +100,7 @@ export default function Admin() {
       )}
       <aside className={"admin-sidebar " + (drawer ? "open" : "")}>
         <Brand />
-        <div className="admin-nav-label">RUANG PENGURUS</div>
+        <div className="admin-nav-label">ADMIN</div>
         <nav>
           {nav.map(([key, I, label]) => (
             <Link
@@ -143,14 +148,14 @@ export default function Admin() {
             >
               <Menu />
             </button>
-            <span>Workspace</span>
+            <span>Admin</span>
             <ChevronRight size={13} />
             <strong>
               {nav.find((n) => n[0] === section)?.[2] || "Dashboard"}
             </strong>
           </div>
           <span className="badge">
-            <span className="green-dot" /> Admin workspace
+            <span className="green-dot" /> {auth.username}
           </span>
         </header>
         <div className="admin-content">
@@ -158,7 +163,16 @@ export default function Admin() {
           {section === "dashboard" ? (
             <Dashboard />
           ) : section === "sessions" ? (
-            <Sessions />
+            sessionSubmissions ? (
+              <SubmissionList
+                key={docId}
+                starred={false}
+                ai={false}
+                fixedSession={docId}
+              />
+            ) : (
+              <Sessions autoCreate={docId === "new"} />
+            )
           ) : section === "settings" ? (
             <AdminSettings />
           ) : (
@@ -259,25 +273,19 @@ function Dashboard() {
     <>
       <div className="admin-page-heading">
         <div>
-          <span className="eyebrow">OVERVIEW</span>
-          <h1>
-            Ruang untuk ide yang berarti<span>.</span>
-          </h1>
-          <p>
-            Pantau kontribusi, tinjau materi, dan tumbuhkan pengetahuan bersama.
-          </p>
+          <h1>Dashboard</h1>
         </div>
-        <Link className="btn primary" href="/admin/sessions">
-          <Plus size={16} /> Buat sesi
+        <Link className="btn primary" href="/admin/sessions/new">
+          <Plus size={16} /> Tambah sesi
         </Link>
       </div>
       <ErrorBox message={error} />
       <div className="stats-grid">
         {[
-          ["submissions", "Total tulisan", FileText],
-          ["writers", "Total penulis", Users],
-          ["submitted", "Menunggu tinjauan", Clock],
-          ["starred", "Tulisan terpilih", Star],
+          ["submissions", "Tulisan", FileText],
+          ["writers", "Penulis", Users],
+          ["submitted", "Belum ditinjau", Clock],
+          ["starred", "Berbintang", Star],
         ].map(([key, label, Icon]) => {
           const I = Icon as typeof FileText;
           return (
@@ -287,11 +295,6 @@ function Dashboard() {
                 <I size={18} />
               </div>
               <strong>{stats ? stats[String(key)] : "—"}</strong>
-              <small>
-                {key === "starred"
-                  ? "Siap dikembangkan menjadi konten"
-                  : "Seluruh sesi penulisan"}
-              </small>
             </div>
           );
         })}
@@ -300,16 +303,11 @@ function Dashboard() {
         <section className="dashboard-table">
           <div className="card-heading">
             <h3>Tulisan terbaru</h3>
-            <Link href="/admin/submissions">
-              Lihat semua <ArrowUpRight size={15} />
-            </Link>
           </div>
           {!stats && !error ? (
             <Spinner />
           ) : !recent.length ? (
-            <Empty title="Ide berikutnya dimulai di sini">
-              Tulisan akan tampil setelah penulis berkontribusi.
-            </Empty>
+            <Empty title="Belum ada tulisan" />
           ) : (
             recent.map((r) => (
               <Link
@@ -333,45 +331,38 @@ function Dashboard() {
           )}
         </section>
         <section className="active-session-card">
-          <div>
-            <span className="eyebrow">
-              <span className="red-dot" /> SESI AKTIF
-            </span>
-            <Layers size={22} />
-          </div>
-          <h2>{active?.title || "Saatnya membuka ruang."}</h2>
-          <p>
-            {active?.description ||
-              "Buat sesi pertama, pilih tema, dan undang mahasiswa untuk berkontribusi."}
-          </p>
-          {active && (
+          <h3>Sesi aktif</h3>
+          {active ? (
             <>
+              <h2>{active.title}</h2>
+              {active.description && <p>{active.description}</p>}
               <span className="session-detail">
-                <Clock size={14} />
-                {date(active.end_at)}
+                Berakhir {date(active.end_at)}
               </span>
               <span className="session-detail">
-                <FileText size={14} />
-                Maksimal {active.max_pages} halaman · {active.themes.length}{" "}
-                tema
+                {active.max_pages} halaman · {active.themes.length} tema
               </span>
+              <Link
+                href={`/admin/sessions/${active.id}/submissions`}
+                className="btn secondary"
+              >
+                Lihat tulisan
+              </Link>
             </>
+          ) : (
+            <p className="no-active-session">Belum ada sesi aktif</p>
           )}
-          <Link href="/admin/sessions" className="btn secondary">
-            {active ? "Kelola sesi" : "Buat sesi penulisan"}{" "}
-            <ArrowRight size={16} />
-          </Link>
         </section>
       </div>
       <div className="metric-strip">
         <span>
-          <strong>{stats?.sessions ?? "—"}</strong> Total sesi
+          <strong>{stats?.sessions ?? "—"}</strong> Sesi
         </span>
         <span>
           <strong>{stats?.active ?? "—"}</strong> Sesi aktif
         </span>
         <span>
-          <strong>{stats?.drafts ?? "—"}</strong> Draft tersimpan
+          <strong>{stats?.drafts ?? "—"}</strong> Draft
         </span>
         <span>
           <strong>{stats?.reviewed ?? "—"}</strong> Diperiksa AI
@@ -388,7 +379,7 @@ const blankTheme = (): Theme => ({
 });
 const localDate = (value: string) =>
   new Date(new Date(value).getTime() + 7 * 3600000).toISOString().slice(0, 16);
-function Sessions() {
+function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
   const [sessions, setSessions] = useState<any[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
@@ -403,6 +394,9 @@ function Sessions() {
   useEffect(() => {
     void load();
   }, []);
+  useEffect(() => {
+    if (autoCreate) create();
+  }, [autoCreate]);
   function create() {
     setError("");
     setEditing({
@@ -419,23 +413,17 @@ function Sessions() {
     <>
       <div className="admin-page-heading">
         <div>
-          <span className="eyebrow">WRITING SESSIONS</span>
-          <h1>Kelola sesi</h1>
-          <p>
-            Atur waktu, tentukan tema, dan beri ruang untuk perspektif baru.
-          </p>
+          <h1>Sesi penulisan</h1>
         </div>
         <Button onClick={create}>
-          <Plus size={16} /> Buat sesi
+          <Plus size={16} /> Tambah sesi
         </Button>
       </div>
       <ErrorBox message={error} />
       {loading ? (
         <Spinner />
       ) : !sessions.length ? (
-        <Empty title="Belum ada sesi penulisan">
-          Buat sesi pertama untuk mulai menerima kontribusi.
-        </Empty>
+        <Empty title="Belum Ada Sesi Penulisan" />
       ) : (
         <div className="session-grid">
           {sessions.map((s) => {
@@ -487,6 +475,12 @@ function Sessions() {
                   <span>
                     {s.count} tulisan · Maks. {s.max_pages} halaman
                   </span>
+                  <Link
+                    className="btn ghost"
+                    href={`/admin/sessions/${s.id}/submissions`}
+                  >
+                    Lihat tulisan
+                  </Link>
                   <Button
                     variant="ghost"
                     onClick={async () => {
@@ -774,13 +768,21 @@ function Sessions() {
     </>
   );
 }
-function SubmissionList({ starred, ai }: { starred: boolean; ai: boolean }) {
+function SubmissionList({
+  starred,
+  ai,
+  fixedSession,
+}: {
+  starred: boolean;
+  ai: boolean;
+  fixedSession?: string;
+}) {
   const [items, setItems] = useState<any[]>([]),
     [sessions, setSessions] = useState<SessionData[]>([]),
     [total, setTotal] = useState(0),
     [page, setPage] = useState(1),
     [q, setQ] = useState(""),
-    [session, setSession] = useState(""),
+    [session, setSession] = useState(fixedSession || ""),
     [status, setStatus] = useState(""),
     [theme, setTheme] = useState(""),
     [error, setError] = useState(""),
@@ -833,27 +835,14 @@ function SubmissionList({ starred, ai }: { starred: boolean; ai: boolean }) {
     <>
       <div className="admin-page-heading">
         <div>
-          <span className="eyebrow">
-            {starred
-              ? "CURATED COLLECTION"
-              : ai
-                ? "FACT CHECKING"
-                : "WRITER CONTRIBUTIONS"}
-          </span>
           <h1>
             {starred
               ? "Tulisan berbintang"
               : ai
                 ? "Pemeriksaan AI"
-                : "Seluruh tulisan"}
+                : sessions.find((s) => s.id === fixedSession)?.title ||
+                  "Tulisan sesi"}
           </h1>
-          <p>
-            {starred
-              ? "Ide terpilih untuk dikembangkan menjadi konten edukasi."
-              : ai
-                ? "Ulasan teknis dan sumber pendukung untuk peninjauan pengurus."
-                : "Setiap tulisan adalah langkah menuju ruang digital yang lebih aman."}
-          </p>
         </div>
         <span className="count-pill">{total} tulisan</span>
       </div>
@@ -870,22 +859,24 @@ function SubmissionList({ starred, ai }: { starred: boolean; ai: boolean }) {
             }}
           />
         </label>
-        <select
-          aria-label="Filter sesi"
-          value={session}
-          onChange={(e) => {
-            setSession(e.target.value);
-            setTheme("");
-            setPage(1);
-          }}
-        >
-          <option value="">Semua sesi</option>
-          {sessions.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title}
-            </option>
-          ))}
-        </select>
+        {!fixedSession && (
+          <select
+            aria-label="Filter sesi"
+            value={session}
+            onChange={(e) => {
+              setSession(e.target.value);
+              setTheme("");
+              setPage(1);
+            }}
+          >
+            <option value="">Semua sesi</option>
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label="Filter tema"
           value={theme}
@@ -1106,9 +1097,7 @@ function AdminSettings() {
     <>
       <div className="admin-page-heading">
         <div>
-          <span className="eyebrow">WORKSPACE SETTINGS</span>
           <h1>Pengaturan</h1>
-          <p>Kelola keamanan akun dan aturan penulisan.</p>
         </div>
       </div>
       <ErrorBox message={error} />

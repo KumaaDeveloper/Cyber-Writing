@@ -301,7 +301,7 @@ export default function Workspace({
     return (
       <main className="center-page">
         <ErrorBox message={error} />
-        <Link href={admin ? "/admin/submissions" : "/"}>Kembali</Link>
+        <Link href={admin ? "/admin/sessions" : "/"}>Kembali</Link>
       </main>
     );
   function changePage(next: number) {
@@ -639,17 +639,17 @@ export default function Workspace({
         <div className="sidebar-document">
           <Link
             className="back-link"
-            href={admin ? "/admin/submissions" : "/"}
+            href={admin ? "/admin/sessions" : "/"}
             onClick={(e) => {
               if (dirty.current) {
                 e.preventDefault();
                 void save().then((ok) => {
-                  if (ok) router.push(admin ? "/admin/submissions" : "/");
+                  if (ok) router.push(admin ? "/admin/sessions" : "/");
                 });
               }
             }}
           >
-            <ArrowLeft size={14} /> {admin ? "Daftar tulisan" : "Beranda"}
+            <ArrowLeft size={14} /> {admin ? "Daftar sesi" : "Beranda"}
           </Link>
           <span className="eyebrow">{doc.session_title}</span>
           <h3>{doc.title}</h3>

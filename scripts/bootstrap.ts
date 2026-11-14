@@ -13,13 +13,16 @@ try {
       client,
       process.env.ADMIN_USERNAME || "admin",
       process.env.ADMIN_BOOTSTRAP_PASSWORD,
+      process.env.ADMIN_PASSWORD_RESET_ID,
     );
     if (result === "missing-password")
       throw new Error("Isi ADMIN_BOOTSTRAP_PASSWORD di .env.local.");
     console.log(
       result === "created"
         ? "Admin created. Remove bootstrap password from environment."
-        : "Admin already exists; no password was changed.",
+        : result === "reset"
+          ? "Admin password reset; existing sessions revoked."
+          : "Admin already exists; no password was changed.",
     );
   } finally {
     client.release();

@@ -67,6 +67,19 @@ export function configurationError(
         error:
           "ADMIN_BOOTSTRAP_PASSWORD harus minimal 12 karakter dan maksimal 72 byte UTF-8.",
       };
+    if (message === "BOOTSTRAP_ADMIN_NOT_FOUND")
+      return {
+        status: 503,
+        code: message,
+        error:
+          "ADMIN_USERNAME tidak cocok dengan akun admin yang akan direset.",
+      };
+    if (message === "BOOTSTRAP_RESET_ID_INVALID")
+      return {
+        status: 503,
+        code: message,
+        error: "ADMIN_PASSWORD_RESET_ID maksimal 100 karakter.",
+      };
     if (message === "BOOTSTRAP_USERNAME_INVALID")
       return {
         status: 503,

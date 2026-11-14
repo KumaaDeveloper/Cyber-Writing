@@ -85,9 +85,8 @@ export function Empty({
 }) {
   return (
     <div className="empty">
-      <ShieldCheck size={34} />
       <h3>{title}</h3>
-      <p>{children}</p>
+      {children && <p>{children}</p>}
     </div>
   );
 }

@@ -19,13 +19,16 @@ if (process.env.DATABASE_URL && process.env.VERCEL_ENV !== "preview") {
         client,
         process.env.ADMIN_USERNAME || "admin",
         process.env.ADMIN_BOOTSTRAP_PASSWORD,
+        process.env.ADMIN_PASSWORD_RESET_ID,
       );
       console.log(
         result === "created"
           ? "[setup] Admin created. Remove ADMIN_BOOTSTRAP_PASSWORD after deployment."
-          : result === "existing"
-            ? "[setup] Existing admin retained; password unchanged."
-            : "[setup] No admin yet. Set ADMIN_BOOTSTRAP_PASSWORD and redeploy, or run admin:bootstrap.",
+          : result === "reset"
+            ? "[setup] Admin password reset; existing sessions revoked. Remove ADMIN_PASSWORD_RESET_ID and bootstrap password after deployment."
+            : result === "existing"
+              ? "[setup] Existing admin retained; password unchanged."
+              : "[setup] No admin yet. Set ADMIN_BOOTSTRAP_PASSWORD and redeploy, or run admin:bootstrap.",
       );
     } finally {
       client.release();

@@ -2,6 +2,20 @@
 
 Aplikasi penulisan materi keamanan siber untuk KSM Cyber Security FIK UPN “Veteran” Jakarta. Dibangun dengan Next.js App Router dan TypeScript, menggunakan logo asli yang dilampirkan. Palet merah–hitam mengacu pada referensi Cyber LMS.
 
+## Revisi dashboard dan password admin
+
+Dashboard menggunakan judul dan label langsung tanpa slogan. Menu “Seluruh Tulisan” dihapus. Daftar tulisan diakses dari **Sesi penulisan → Lihat tulisan**; tulisan terbaru, bintang, dan pemeriksaan AI tetap dapat dibuka.
+
+Untuk menetapkan password yang diinginkan pada akun admin yang sudah ada, isi environment **Production** di Vercel:
+
+- `ADMIN_USERNAME`: username akun yang akan direset (untuk proyek ini `admin`).
+- `ADMIN_BOOTSTRAP_PASSWORD`: password baru pilihan pemilik, minimal 12 karakter dan maksimal 72 byte UTF-8.
+- `ADMIN_PASSWORD_RESET_ID`: kode reset, misalnya `admin-reset-1`.
+
+Push kode versi ini lalu Redeploy dengan Build Command `npm run build`. Saat build, password akun diproses sebagai hash bcrypt dan seluruh sesi admin tersebut dikeluarkan. Login memakai password yang baru. Setelah berhasil, hapus `ADMIN_PASSWORD_RESET_ID` dan `ADMIN_BOOTSTRAP_PASSWORD` dari environment.
+
+Kode reset yang sama hanya dipakai sekali: build selanjutnya tidak mengubah password yang mungkin sudah diganti dari Pengaturan. Reset berikutnya memerlukan kode baru, misalnya `admin-reset-2`. Tanpa kode reset, akun lama tetap dipertahankan. Password asli tidak ditulis ke repository, log, atau paket ZIP ini.
+
 ## Mulai dari sini
 
 1. Ekstrak ZIP ini.
@@ -81,7 +95,7 @@ Versi ini menyiapkan tabel dan admin awal saat `npm run build` pada deployment P
 
 Migrasi dan bootstrap manual tetap tersedia melalui `npm run db:migrate` dan `npm run admin:bootstrap` dengan `.env.local`, misalnya untuk setup database Preview terpisah. Tidak ada password default atau secret asli di kode.
 
-Jika login masih gagal, periksa pesan spesifik di layar: database belum diisi, tabel belum siap, koneksi Neon ditolak/tidak terjangkau, akun admin belum dibuat, atau APP_URL tidak sesuai. Pastikan environment Production disimpan lalu Redeploy. Bila akun admin sudah ada, mengganti ADMIN_BOOTSTRAP_PASSWORD **tidak** mengganti password akun tersebut; gunakan password yang dibuat saat bootstrap pertama atau fitur ganti password setelah login.
+Jika login masih gagal, periksa pesan spesifik di layar: database belum diisi, tabel belum siap, koneksi Neon ditolak/tidak terjangkau, akun admin belum dibuat, atau APP_URL tidak sesuai. Pastikan environment Production disimpan lalu Redeploy. Bila akun admin sudah ada, mengganti ADMIN_BOOTSTRAP_PASSWORD **tidak** mengganti password akun tersebut tanpa `ADMIN_PASSWORD_RESET_ID`; gunakan prosedur reset di awal dokumen atau fitur ganti password setelah login.
 
 Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload preset. Maksimal file 4 MiB; isi gambar divalidasi dan dikonversi ke WebP. API AI memakai runtime Node dengan maxDuration 120 detik.
 
