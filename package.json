@@ -1,0 +1,59 @@
+{
+  "name": "ksm-cyber-writing",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "db:migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts",
+    "admin:bootstrap": "node --env-file=.env.local --import tsx scripts/bootstrap.ts",
+    "maintenance": "node --env-file=.env.local --import tsx scripts/maintenance.ts"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@google/genai": "^1.30.0",
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@tiptap/extension-highlight": "^3.10.7",
+    "@tiptap/extension-table": "^3.10.7",
+    "@tiptap/extension-task-item": "^3.10.7",
+    "@tiptap/extension-task-list": "^3.10.7",
+    "@tiptap/extension-text-align": "^3.10.7",
+    "@tiptap/extension-text-style": "^3.10.7",
+    "@tiptap/react": "^3.10.7",
+    "@tiptap/starter-kit": "^3.10.7",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.8.0",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
+    "idb-keyval": "^6.2.2",
+    "lucide-react": "^0.468.0",
+    "mermaid": "^12.3.0",
+    "next": "16.4.6",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.66.0",
+    "sharp": "^0.35.5",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.17",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}
