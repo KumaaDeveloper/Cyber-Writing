@@ -187,36 +187,11 @@ function AdminLogin({
     password: string;
   }>();
   return (
-    <div className="admin-login">
-      <section className="login-art">
+    <div className="plain-admin-login">
+      <header>
         <Brand />
-        <div>
-          <span className="eyebrow">BEHIND EVERY GREAT STORY</span>
-          <h1>
-            Pengetahuan
-            <br />
-            yang terarah.
-            <br />
-            <span>Dampak yang nyata.</span>
-          </h1>
-          <p>
-            Tinjau tulisan, kembangkan ide, dan hadirkan edukasi cyber yang
-            dapat dipercaya.
-          </p>
-          <div className="login-illustration">
-            <FileText size={110} strokeWidth={1} />
-            <span>
-              <ShieldCheck size={46} />
-            </span>
-          </div>
-        </div>
-        <small>
-          KSM CYBER SECURITY
-          <br />
-          FAKULTAS ILMU KOMPUTER · UPN VETERAN JAKARTA
-        </small>
-      </section>
-      <section className="login-form">
+      </header>
+      <main className="plain-login-form">
         <form
           onSubmit={handleSubmit(async (v) => {
             setBusy(true);
@@ -232,12 +207,7 @@ function AdminLogin({
             }
           })}
         >
-          <span className="login-lock">
-            <LockKeyhole size={24} />
-          </span>
-          <span className="eyebrow">ADMIN ACCESS</span>
-          <h2>Selamat datang kembali.</h2>
-          <p>Masuk untuk mengelola ruang Cyber Writing.</p>
+          <h1>Masuk admin</h1>
           <ErrorBox message={error} />
           <label>
             Username
@@ -259,15 +229,10 @@ function AdminLogin({
             />
           </label>
           <Button disabled={busy} type="submit">
-            {busy ? "Memverifikasi..." : "Masuk ke dashboard"}{" "}
-            <ArrowRight size={17} />
+            {busy ? "Masuk..." : "Masuk"} <ArrowRight size={17} />
           </Button>
-          <small className="login-security">
-            <ShieldCheck size={14} /> Akses terbatas untuk pengurus yang
-            berwenang.
-          </small>
         </form>
-      </section>
+      </main>
     </div>
   );
 }

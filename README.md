@@ -68,20 +68,22 @@ Tidak ada secret asli di paket ini. Jangan menambahkan awalan `NEXT_PUBLIC_` pad
 
 ## Deploy ke Vercel + Neon
 
-1. Buat database PostgreSQL di Neon dan isi connection string ke `.env.local`.
-2. Jalankan migrasi dan bootstrap dari mesin lokal menggunakan database tujuan. Migrasi memakai transaction, advisory lock, dan tabel `schema_migrations`, sehingga eksekusi ulang aman.
-3. Buat cloud Cloudinary. Ambil cloud name, API key, dan API secret dari akun sendiri. Upload dilakukan melalui backend; tidak memakai unsigned upload preset.
-4. Buat Gemini API key dengan akses/billing yang diperlukan untuk Google Search grounding. Pemeriksaan AI bisa menggunakan kuota berbayar sesuai akun.
-5. Unggah isi folder proyek ke repository GitHub pribadi. Jangan mengunggah `.env.local`, `.next`, atau `node_modules`.
-6. Import repository ke Vercel. Framework preset: **Next.js**. Build command: `npm run build`. Install command: `npm ci`. Root directory harus menunjuk folder yang berisi `package.json`.
-7. Isi environment variables produksi di Vercel. `APP_URL` harus sesuai origin deployment yang digunakan. Bootstrap password tidak perlu dimasukkan di Vercel setelah admin dibuat.
-8. Deploy. Jika memakai custom domain, ubah `APP_URL` ke domain tersebut lalu redeploy. Gunakan database terpisah jika membuat deployment pengujian.
-9. Buka `/admin`, masuk, lalu buat sesi berisi 1–3 tema. Sesuaikan waktu mulai/akhir **WIB**. Pilih status terjadwal/terbuka sesuai jadwal. Akun admin dapat mengubah password di Pengaturan.
-10. Jalankan checklist pengujian layanan nyata di `VERIFICATION.md` sebelum membagikan URL kepada peserta.
+Versi ini menyiapkan tabel dan admin awal saat `npm run build` pada deployment Production. Preview deployment tidak menjalankan perubahan database otomatis. Tanpa DATABASE_URL, build UI tetap dapat dijalankan, tetapi login dan penulisan belum dapat digunakan.
 
-Build tidak memerlukan kredensial database dan tidak mengisi data contoh. Tanpa konfigurasi, beranda menunjukkan sesi belum tersedia. Login, penulisan, upload, dan AI baru dapat dipakai setelah layanan masing-masing dihubungkan.
+1. Buat database Neon dan salin connection string TLS ke Vercel sebagai `DATABASE_URL`.
+2. Di Vercel, pilih repository ini, Framework Next.js, Root Directory `./`, Install `npm ci`, Build `npm run build`, Output otomatis, Node 24.x.
+3. Isi environment Production: `DATABASE_URL`, `APP_URL` (origin website persis, termasuk https), `AUTH_SECRET` (minimal 32 karakter), `ADMIN_USERNAME=admin`, dan `ADMIN_BOOTSTRAP_PASSWORD` (password awal minimal 12 karakter, maksimal 72 byte UTF-8).
+4. Isi kredensial Cloudinary untuk upload serta `GEMINI_API_KEY` dan `GEMINI_MODEL` untuk pemeriksaan AI.
+5. Deploy atau Redeploy. Build menjalankan migrasi SQL secara transaksional, kemudian membuat admin **hanya jika tabel admins belum berisi akun**. Akun yang sudah ada tidak diubah atau direset oleh environment variable.
+6. Periksa Build Logs: `[setup] Database schema ready.` dan `[setup] Admin created.` atau `[setup] Existing admin retained; password unchanged.` menandakan setup berhasil. Koneksi database yang gagal membuat build berhenti dengan pesan konfigurasi, bukan melanjutkan deployment yang rusak.
+7. Login melalui `/admin` memakai username/password bootstrap. Setelah berhasil, hapus `ADMIN_BOOTSTRAP_PASSWORD` dari Vercel; password hash tetap tersimpan di database.
+8. Buat sesi penulisan dari admin. Gunakan WIB untuk jadwal sesi.
 
-API AI memakai runtime Node dan `maxDuration=120`. Pastikan paket Vercel mendukung durasi tersebut. Upload dibatasi **4 MiB per file**, di bawah batas payload standar Vercel Functions yang didokumentasikan sebesar 4,5 MB, termasuk overhead multipart. API memvalidasi ukuran, tipe, dan isi gambar; lalu mengubahnya ke WebP dengan sisi maksimal 2.400 px.
+Migrasi dan bootstrap manual tetap tersedia melalui `npm run db:migrate` dan `npm run admin:bootstrap` dengan `.env.local`, misalnya untuk setup database Preview terpisah. Tidak ada password default atau secret asli di kode.
+
+Jika login masih gagal, periksa pesan spesifik di layar: database belum diisi, tabel belum siap, koneksi Neon ditolak/tidak terjangkau, akun admin belum dibuat, atau APP_URL tidak sesuai. Pastikan environment Production disimpan lalu Redeploy. Bila akun admin sudah ada, mengganti ADMIN_BOOTSTRAP_PASSWORD **tidak** mengganti password akun tersebut; gunakan password yang dibuat saat bootstrap pertama atau fitur ganti password setelah login.
+
+Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload preset. Maksimal file 4 MiB; isi gambar divalidasi dan dikonversi ke WebP. API AI memakai runtime Node dengan maxDuration 120 detik.
 
 ## Fitur yang diimplementasikan
 
@@ -175,7 +177,7 @@ scripts/
   dev.mjs                   Launcher dev kompatibel preview
 db/001_initial.sql         Skema, relasi, constraint, indeks
 tests/                     Unit dan transaksi database
-public/cyber-logo.png       Logo resmi dari lampiran
+public/cyber-mark-v2.png       Logo resmi dari lampiran
 ```
 
 ## Pengujian dan pemeliharaan

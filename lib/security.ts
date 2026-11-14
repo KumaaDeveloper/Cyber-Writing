@@ -63,7 +63,10 @@ export function checkOrigin(req: Request) {
     fail(503, "APP_URL tidak valid.");
   }
   if (req.headers.get("origin") !== origin!)
-    fail(403, "Permintaan lintas situs ditolak.");
+    fail(
+      403,
+      "Alamat website tidak cocok dengan APP_URL. Perbarui APP_URL di Vercel lalu Redeploy.",
+    );
 }
 export async function limit(key: string, max: number, seconds: number) {
   const secret = process.env.AUTH_SECRET;

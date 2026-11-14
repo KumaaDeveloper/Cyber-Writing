@@ -9,7 +9,10 @@ export const metadata: Metadata = {
   description:
     "Ruang menulis, berbagi wawasan, dan membangun kesadaran keamanan digital. KSM Cyber Security UPN Veteran Jakarta.",
   robots: { index: false, follow: false },
-  icons: { icon: "/cyber-logo.png" },
+  icons: {
+    icon: [{ url: "/favicon-v2.png", type: "image/png" }],
+    shortcut: "/favicon.ico",
+  },
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

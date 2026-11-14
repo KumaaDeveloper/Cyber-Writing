@@ -51,7 +51,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="brand">
       <span className="brand-symbol">
-        <img src="/cyber-logo.png" alt="Logo KSM Cyber Security" />
+        <img src="/cyber-mark-v2.png" alt="Logo KSM Cyber Security" />
       </span>
       {!compact && (
         <span>

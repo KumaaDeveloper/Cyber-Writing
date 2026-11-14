@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "next build",
+    "build": "node --import tsx scripts/build.ts",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
@@ -41,7 +41,8 @@
     "sharp": "^0.35.5",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@next/env": "16.4.6"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",

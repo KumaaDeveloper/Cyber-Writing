@@ -10,7 +10,7 @@ Paket dibuat pada 14 November 2026. Berkas ini membedakan pemeriksaan yang dilak
 - Migrasi SQL dijalankan dalam PostgreSQL lokal berbasis PGlite pada tes; bukan koneksi ke Neon.
 - Pratinjau beranda dan halaman login admin dilihat di browser desktop.
 - Audit dependency produksi menggunakan `npm audit --omit=dev`: 0 vulnerability terlapor pada saat pemeriksaan.
-- Hasil terakhir: 18 tes otomatis lulus; build dan typecheck berhasil.
+- Hasil terakhir: 22 tes otomatis lulus; build dan typecheck berhasil.
 
 ## Kasus pengujian otomatis
 
@@ -65,3 +65,13 @@ Paket dibuat pada 14 November 2026. Berkas ini membedakan pemeriksaan yang dilak
 - [ ] Hapus tulisan uji dan verifikasi antrean pembersihan Cloudinary kosong setelah maintenance.
 
 Kredensial dan proses deployment nyata harus diselesaikan pemilik sebelum aplikasi dipakai peserta.
+
+## Revisi login dan identitas visual
+
+- Login admin memakai satu form sederhana: judul Masuk admin, username, kata sandi, dan tombol Masuk. Panel promosi dan slogan dihapus.
+- Logo baru dari lampiran dipakai utuh pada header; favicon PNG dan ICO memakai gambar yang sama.
+- Migrasi build dan bootstrap awal diuji dengan PostgreSQL lokal berbasis PGlite. Tes memeriksa migrasi berulang, password hash benar/salah, akun lama tidak direset, serta password kosong/tidak valid.
+- Error database dibedakan secara aman, termasuk driver error yang dibungkus Drizzle. Connection string dan pesan SQL mentah tidak dikirim ke browser/log.
+- Login pada deployment Neon/Vercel pemilik tetap memerlukan kredensial dan verifikasi di layanan nyata.
+
+Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 22 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.

@@ -1,3 +1,4 @@
+import { configurationError } from "@/lib/config-errors";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -88,6 +89,16 @@ async function handler(
         const [a] = await rows(
           sql`SELECT * FROM admins WHERE username=${body.username}`,
         );
+        if (!a) {
+          const [configured] = await rows(
+            sql`SELECT EXISTS(SELECT 1 FROM admins) AS ready`,
+          );
+          if (!configured.ready)
+            fail(
+              503,
+              "Akun admin belum dibuat. Isi ADMIN_BOOTSTRAP_PASSWORD di Vercel lalu Redeploy versi terbaru.",
+            );
+        }
         const fallback =
           "$2b$12$JkxykcXKAF7W9y/Lz5gUceWVf3NQYnTRf7Nc4e7LH7hAKUZOaV7rG";
         const valid = await bcrypt.compare(
@@ -587,14 +598,11 @@ async function handler(
         },
         400,
       );
-    if (e instanceof Error && e.message === "CONFIG_DATABASE")
-      return json(
-        {
-          error:
-            "Database belum dikonfigurasi. Isi DATABASE_URL dan jalankan migrasi.",
-        },
-        503,
-      );
+    const diagnostic = configurationError(e);
+    if (diagnostic) {
+      console.error("[api]", diagnostic.code);
+      return json({ error: diagnostic.error }, diagnostic.status);
+    }
     console.error("[api]", e instanceof Error ? e.name : "Unknown error");
     return json(
       {
