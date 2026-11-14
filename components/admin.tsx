@@ -406,7 +406,7 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
       end_at: localDate(new Date(Date.now() + 5 * 86400000).toISOString()),
       max_pages: 8,
       status: "scheduled",
-      themes: [blankTheme(), blankTheme(), blankTheme()],
+      themes: [blankTheme()],
     });
   }
   return (
@@ -628,7 +628,7 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
                 </select>
               </label>
             </div>
-            <h3>Tema penulisan ({editing.themes.length}/3)</h3>
+            <h3>Tema penulisan ({editing.themes.length})</h3>
             {editing.themes.map((t: Theme, i: number) => (
               <fieldset className="theme-form" key={i}>
                 <legend>Tema {i + 1}</legend>
@@ -691,14 +691,16 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
                     />{" "}
                     Tersedia untuk penulis
                   </label>
-                  {i === editing.themes.length - 1 && i > 0 && (
+                  {editing.themes.length > 1 && (
                     <Button
                       type="button"
                       variant="ghost"
                       onClick={() =>
                         setEditing({
                           ...editing,
-                          themes: editing.themes.slice(0, -1),
+                          themes: editing.themes.filter(
+                            (_: Theme, j: number) => j !== i,
+                          ),
                         })
                       }
                     >
@@ -708,7 +710,7 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
                 </div>
               </fieldset>
             ))}
-            {editing.themes.length < 3 && (
+            {
               <Button
                 variant="secondary"
                 type="button"
@@ -721,7 +723,7 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
               >
                 <Plus size={14} /> Tambah tema
               </Button>
-            )}
+            }
             <ErrorBox message={error} />
             <div className="form-bottom">
               <Button

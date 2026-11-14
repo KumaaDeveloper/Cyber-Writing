@@ -16,6 +16,15 @@ Push kode versi ini lalu Redeploy dengan Build Command `npm run build`. Saat bui
 
 Kode reset yang sama hanya dipakai sekali: build selanjutnya tidak mengubah password yang mungkin sudah diganti dari Pengaturan. Reset berikutnya memerlukan kode baru, misalnya `admin-reset-2`. Tanpa kode reset, akun lama tetap dipertahankan. Password asli tidak ditulis ke repository, log, atau paket ZIP ini.
 
+## Revisi tema, editor, dan informasi sesi
+
+- Pilihan tema dipusatkan pada satu kolom, tanpa nomor dekoratif. Teks dan indikator pilihan disejajarkan secara vertikal; deskripsi kosong tidak menyisakan ruang tambahan.
+- Informasi sesi aktif di beranda tampil dalam box dengan judul, tenggat, dan tombol Mulai Menulis. Saat tidak ada sesi, tetap hanya muncul pesan Belum Ada Sesi Penulisan.
+- Editor memiliki satu tombol **Tools**. Panelnya berisi tambah teks/gambar/galeri/tabel/diagram/referensi serta format teks untuk blok yang sedang dipilih. Toolbar panjang tidak lagi muncul pada setiap blok. Menutup panel tidak membuat ulang editor atau menghapus riwayat undo.
+- Admin mulai dari satu tema dan dapat menambah sebanyak yang dibutuhkan. Tidak ada batas hitungan tiga tema pada form atau server; minimal satu tema tetap diperlukan. Batas ukuran request total tetap berlaku.
+- Migrasi `002_unlimited_themes.sql` menghapus batas indeks 0–2 serta memungkinkan perubahan urutan tema dalam transaksi. Migrasi mempertahankan ID dan relasi tema pada tulisan lama. Tema yang sudah dipakai tulisan tetap tidak dapat dihapus; admin dapat menonaktifkannya.
+- Deploy melalui `npm run build` menjalankan migrasi baru secara otomatis pada Production yang memiliki DATABASE_URL. Alternatif manual: `npm run db:migrate`.
+
 ## Mulai dari sini
 
 1. Ekstrak ZIP ini.
@@ -108,7 +117,7 @@ Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload p
 - Identitas, tema, editor, pratinjau, dan konfirmasi pengiriman.
 - Nama, NIM sebagai teks, email, keanggotaan, serta departemen kondisional BPH/Technical/Social.
 - Aturan panjang NIM numerik dapat diubah admin, 5–20 digit.
-- Satu tema per tulisan; 1–3 tema dinamis per sesi.
+- Satu tema per tulisan; jumlah tema per sesi ditentukan admin tanpa batas tiga tema.
 - Dokumen terdiri atas halaman terpisah dengan `?page=1`, tambah/duplikasi/hapus, ubah judul, urutkan, dan batas halaman server.
 - Blok teks TipTap: H1–H3, paragraf, bold, italic, underline, strike, daftar, kutipan, kode, hyperlink HTTPS, alignment, warna, highlight, checklist, undo/redo.
 - Tabel beserta kontrol baris, kolom, header, dan penghapusan.
@@ -143,7 +152,7 @@ Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload p
 
 ### Mobile dan aksesibilitas
 
-- Layout khusus mobile pada lebar 360–600 px: drawer halaman/admin, toolbar horizontal, dialog dalam viewport, navigasi halaman tetap terlihat.
+- Layout khusus mobile pada lebar 360–600 px: drawer halaman/admin, satu tombol Tools dengan panel responsif, dialog dalam viewport, navigasi halaman tetap terlihat.
 - Panel pengaturan dan referensi menggunakan dialog yang dapat diakses keyboard dan dikelola fokusnya melalui Radix.
 - Daftar admin lengkap dipertahankan dalam tabel yang dapat digeser horizontal; kolom tidak dibuang untuk mobile.
 - Font Inter lokal, modul editor/diagram di-load secara dinamis, dan reduced-motion support.

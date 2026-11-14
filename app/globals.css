@@ -3825,3 +3825,32 @@ footer > span:last-child {
 .stat-card>strong{margin-bottom:0}
 .session-card-bottom{flex-wrap:wrap}
 .session-card-bottom>span{flex:1 0 100%}
+/* Consistent theme alignment and a contained session entry. */
+.simple-form-layout{width:100%;max-width:640px;margin:44px auto 64px}
+.simple-progress{justify-content:center;gap:32px;margin-bottom:24px}
+.themes .theme-card{align-items:center;gap:18px;min-height:72px;padding:20px;text-align:left}
+.themes .theme-card>div{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0}
+.themes .theme-card h3,.themes .theme-card p,.themes .theme-card small{margin:0;overflow-wrap:anywhere}
+.themes .radio-mark{align-self:center;flex-shrink:0;margin-left:auto}
+.simple-session{max-width:480px;padding:32px;background:#111114;border:1px solid #303036;border-radius:10px;gap:18px;box-sizing:border-box}
+.simple-session h1{font-size:27px}
+.simple-session .btn{width:100%;margin-top:8px}
+/* One tools button, one expandable panel; formatting applies to selected text. */
+.workspace-tools-panel{border:1px solid #34343e;border-radius:8px;background:#17171c;padding:18px;margin:-8px 0 22px;max-height:55dvh;overflow:auto}
+.tool-group-heading{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#c8c8d3;margin-bottom:10px}
+.tool-group-heading:not(:first-child){border-top:1px solid #303038;padding-top:15px;margin-top:15px}
+.insert-tool-grid,.workspace-tools-panel .text-toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.insert-tool-grid button,.workspace-tools-panel .text-toolbar>button{border:1px solid #383842;background:#202027;color:#c4c4cf;border-radius:5px;padding:9px 10px;display:flex;align-items:center;justify-content:flex-start;gap:8px;width:auto;height:auto;min-height:35px;font-size:11px;text-align:left}
+.insert-tool-grid button:hover,.workspace-tools-panel .text-toolbar>button:hover{border-color:#8b484e;color:white}
+.workspace-tools-panel .text-toolbar{border:0;padding:0;margin:0;background:none;overflow:visible}
+.workspace-tools-panel .text-toolbar .tool-separator{display:none}
+.workspace-tools-panel .text-toolbar select{width:100%;height:35px;background:#202027;border:1px solid #383842;font-size:11px}
+.workspace-tools-panel .text-toolbar .color-picker{width:auto;height:35px;gap:8px;justify-content:flex-start;padding:8px 10px;background:#202027;border:1px solid #383842;border-bottom:2px solid #ef3e42;border-radius:5px}
+.workspace-tools-panel .text-toolbar .color-picker span:after{content:' Warna teks';font-size:11px}
+.workspace-tools-panel .tool-label{display:inline}
+.document-title-row input.document-title,.paper input.page-title{background:transparent!important;border:0!important;border-radius:0!important;padding:4px 0!important;box-shadow:none!important}
+.paper input.page-title{font-size:27px}
+.content-block .rich-editor{padding:2px 0 8px}
+.content-block .block-controls{border-bottom:0;margin-bottom:4px}
+@media(max-width:800px){.insert-tool-grid,.workspace-tools-panel .text-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.simple-form-layout{margin:28px auto 44px}.simple-session{padding:24px;max-width:100%}.simple-session h1{font-size:24px}.themes .theme-card{padding:16px;min-height:66px}.simple-progress{gap:26px}.workspace-tools-panel{padding:13px;max-height:55dvh}.insert-tool-grid,.workspace-tools-panel .text-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.workspace-tools-panel .text-toolbar>button{min-height:40px}.workspace-tools-panel .text-toolbar select{height:40px}.paper input.page-title{font-size:23px}}

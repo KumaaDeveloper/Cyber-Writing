@@ -187,7 +187,7 @@ export const sessionSchema = z
     end_at: z.iso.datetime({ offset: true }),
     max_pages: z.number().int().min(1).max(30),
     status: z.enum(["scheduled", "open", "closed"]),
-    themes: z.array(themeSchema).min(1).max(3),
+    themes: z.array(themeSchema).min(1),
   })
   .refine(
     (v) => new Date(v.end_at) > new Date(v.start_at),

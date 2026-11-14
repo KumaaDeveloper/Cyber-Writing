@@ -10,7 +10,7 @@ Paket dibuat pada 14 November 2026. Berkas ini membedakan pemeriksaan yang dilak
 - Migrasi SQL dijalankan dalam PostgreSQL lokal berbasis PGlite pada tes; bukan koneksi ke Neon.
 - Pratinjau beranda dan halaman login admin dilihat di browser desktop.
 - Audit dependency produksi menggunakan `npm audit --omit=dev`: 0 vulnerability terlapor pada saat pemeriksaan.
-- Hasil terakhir: 25 tes otomatis lulus; build dan typecheck berhasil.
+- Hasil terakhir: 26 tes otomatis lulus; build dan typecheck berhasil.
 
 ## Kasus pengujian otomatis
 
@@ -21,7 +21,7 @@ Paket dibuat pada 14 November 2026. Berkas ini membedakan pemeriksaan yang dilak
 5. URL javascript/data dan node HTML yang tidak diizinkan ditolak.
 6. Struktur rich text yang terlalu dalam ditolak.
 7. Submit memerlukan tulisan, bukan hanya judul/gambar.
-8. Sesi menolak tanggal terbalik dan tema lebih dari tiga.
+8. Sesi menolak tanggal terbalik dan menerima jumlah tema yang ditentukan admin (diuji hingga 250 tema).
 9. Owner berbeda ditolak meskipun mengetahui UUID tulisan.
 10. Simpan mempertahankan halaman, referensi, versi, dan snapshot sebelumnya.
 11. Save dengan versi usang ditolak tanpa mengubah halaman server.
@@ -74,8 +74,14 @@ Kredensial dan proses deployment nyata harus diselesaikan pemilik sebelum aplika
 - Error database dibedakan secara aman, termasuk driver error yang dibungkus Drizzle. Connection string dan pesan SQL mentah tidak dikirim ke browser/log.
 - Login pada deployment Neon/Vercel pemilik tetap memerlukan kredensial dan verifikasi di layanan nyata.
 
-Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 25 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.
+Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 26 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.
 
 ## Penyederhanaan dashboard
 
 Menu Seluruh Tulisan dihapus; daftar tulisan ditempatkan pada tiap sesi. Teks promosi dan subtitle statistik dihapus. Password reset saat build bersifat opt-in dengan ADMIN_PASSWORD_RESET_ID. Tes tambahan memeriksa penggantian hash, pencabutan sesi, audit, idempotensi kode reset yang sama, dan rollback saat username/password reset tidak valid. Password produksi tidak diubah dalam lingkungan pembangunan ini.
+
+## Revisi jumlah tema dan tools
+
+Tes migrasi tambahan memeriksa perpindahan schema lama dengan relasi tulisan tetap utuh, penyimpanan sembilan tema, pengurutan ulang menggunakan upsert yang sama seperti API, penghapusan tema di tengah, dan penolakan indeks negatif. Form dan payload server tidak lagi membatasi tiga tema.
+
+Pemeriksaan visual perubahan terakhir pada browser belum dilakukan di sesi ini. Verifikasi interaksi Tools, seleksi teks, tabel, dan layout mobile pada deployment pemilik sebelum digunakan luas.

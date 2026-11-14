@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { get, set, del } from "idb-keyval";
 import {
+  SlidersHorizontal,
+  ChevronDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -105,6 +107,9 @@ export default function Workspace({
     [loading, setLoading] = useState(true),
     [drawer, setDrawer] = useState(false),
     [insert, setInsert] = useState(""),
+    [toolsOpen, setToolsOpen] = useState(false),
+    [activeBlockId, setActiveBlockId] = useState(""),
+    [formatTarget, setFormatTarget] = useState<HTMLDivElement | null>(null),
     [submitOpen, setSubmitOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [confirmDelete, setConfirmDelete] = useState<{
@@ -138,6 +143,11 @@ export default function Workspace({
       )
     : 0;
   const page = doc?.pages[pageIndex];
+  const formatBlockId = page?.blocks.some(
+    (b) => b.id === activeBlockId && "content" in b,
+  )
+    ? activeBlockId
+    : page?.blocks.find((b) => "content" in b)?.id;
   const readOnly = preview || (!admin && !doc?.writable) || (admin && !edit);
   readOnlyRef.current = readOnly;
   const localKey = "cw-" + (admin ? "admin-" : "") + "draft-" + id;
@@ -327,6 +337,7 @@ export default function Workspace({
     });
   }
   function addBlock(type: string) {
+    setToolsOpen(false);
     if (type === "image" || type === "reference" || type === "gallery") {
       setInsert(type);
       return;
@@ -751,7 +762,10 @@ export default function Workspace({
                       await api(endpoint, "PATCH", {
                         is_starred: !doc.is_starred,
                       });
-                      const d = { ...current.current!, is_starred: !doc.is_starred };
+                      const d = {
+                        ...current.current!,
+                        is_starred: !doc.is_starred,
+                      };
                       setDoc(d);
                       current.current = d;
                     } catch (e) {
@@ -831,16 +845,68 @@ export default function Workspace({
                 />
               </div>
               {!readOnly && (
-                <button
-                  className="icon-button"
-                  title="Simpan sekarang"
-                  aria-label="Simpan sekarang"
-                  onClick={() => void save()}
+                <Button
+                  variant="secondary"
+                  aria-expanded={toolsOpen}
+                  aria-controls="workspace-tools"
+                  onClick={() => setToolsOpen((v) => !v)}
                 >
-                  <Cloud size={19} />
-                </button>
+                  <SlidersHorizontal size={16} />
+                  Tools
+                  <ChevronDown size={14} />
+                </Button>
               )}
             </div>
+            {!readOnly && toolsOpen && (
+              <section
+                id="workspace-tools"
+                className="workspace-tools-panel"
+                aria-label="Tools editor"
+              >
+                <div className="tool-group-heading">
+                  <strong>Tambahkan</strong>
+                  <button
+                    className="icon-button"
+                    aria-label="Tutup tools"
+                    onClick={() => setToolsOpen(false)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="insert-tool-grid">
+                  {[
+                    ["text", Type, "Teks"],
+                    ["image", ImageIcon, "Gambar"],
+                    ["gallery", Images, "Galeri"],
+                    ["table", Table2, "Tabel"],
+                    ["diagram", GitBranch, "Diagram"],
+                    ["callout", Info, "Info"],
+                    ["warning", TriangleAlert, "Peringatan"],
+                    ["divider", Minus, "Pemisah"],
+                    ["reference", LinkIcon, "Sumber"],
+                  ].map(([type, Icon, label]) => {
+                    const I = Icon as typeof Type;
+                    return (
+                      <button
+                        key={String(type)}
+                        onClick={() => addBlock(String(type))}
+                      >
+                        <I size={16} />
+                        {label as string}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="tool-group-heading">
+                  <strong>Format teks</strong>
+                </div>
+                {!formatBlockId && (
+                  <p className="muted">Tambahkan atau pilih blok teks.</p>
+                )}
+                <div ref={setFormatTarget} />
+              </section>
+            )}
+
             <article className="paper">
               <div className="paper-eyebrow">
                 <span>HALAMAN {String(pageIndex + 1).padStart(2, "0")}</span>
@@ -952,6 +1018,10 @@ export default function Workspace({
                   {"content" in b && (
                     <RichEditor
                       content={b.content}
+                      toolbarTarget={
+                        b.id === formatBlockId ? formatTarget : null
+                      }
+                      onActivate={() => setActiveBlockId(b.id)}
                       readOnly={readOnly}
                       onChange={(v) => blockChange(b.id, { ...b, content: v })}
                     />
@@ -1135,37 +1205,8 @@ export default function Workspace({
                 <p className="muted">
                   {readOnly
                     ? "Halaman ini belum memiliki konten."
-                    : "Mulai dengan menambahkan blok di bawah."}
+                    : "Klik Tools untuk menambahkan konten."}
                 </p>
-              )}
-              {!readOnly && (
-                <div className="insert-tools">
-                  <span>TAMBAHKAN BLOK</span>
-                  <div>
-                    {[
-                      ["text", Type, "Teks"],
-                      ["image", ImageIcon, "Gambar"],
-                      ["gallery", Images, "Galeri"],
-                      ["table", Table2, "Tabel"],
-                      ["diagram", GitBranch, "Diagram"],
-                      ["callout", Info, "Info"],
-                      ["warning", TriangleAlert, "Peringatan"],
-                      ["divider", Minus, "Pemisah"],
-                      ["reference", LinkIcon, "Sumber"],
-                    ].map(([type, Icon, label]) => {
-                      const I = Icon as typeof Type;
-                      return (
-                        <button
-                          key={String(type)}
-                          onClick={() => addBlock(String(type))}
-                        >
-                          <I size={16} />
-                          {label as string}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               )}
               <div className="paper-footer">
                 <span>KSM CYBER WRITING</span>

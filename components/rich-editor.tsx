@@ -1,4 +1,5 @@
 "use client";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -32,14 +33,20 @@ export default function RichEditor({
   content,
   onChange,
   readOnly = false,
+  toolbarTarget,
+  onActivate,
 }: {
   content: unknown;
   onChange: (v: JSONContent) => void;
   readOnly?: boolean;
+  toolbarTarget?: HTMLElement | null;
+  onActivate?: () => void;
 }) {
   const change = useRef(onChange);
   change.current = onChange;
   const [, render] = useState(0);
+  const activate = useRef(onActivate);
+  activate.current = onActivate;
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -62,6 +69,7 @@ export default function RichEditor({
     content: content as JSONContent,
     editable: !readOnly,
     onUpdate: ({ editor }) => change.current(editor.getJSON()),
+    onFocus: () => activate.current?.(),
     onSelectionUpdate: () => render((n) => n + 1),
     onTransaction: () => render((n) => n + 1),
   });
@@ -91,21 +99,11 @@ export default function RichEditor({
       onClick={action}
     >
       {icon}
+      <span className="tool-label">{title}</span>
     </button>
   );
-  return (
-    <div
-      className={"rich-editor " + (readOnly ? "read-only" : "")}
-      onClick={(e) => {
-        if (readOnly) {
-          const a = (e.target as HTMLElement).closest("a");
-          if (a && safeUrl(a.href)) {
-            e.preventDefault();
-            window.open(a.href, "_blank", "noopener,noreferrer");
-          }
-        }
-      }}
-    >
+  const toolContents = (
+    <>
       {!readOnly && (
         <div className="text-toolbar" role="toolbar" aria-label="Format teks">
           <select
@@ -263,6 +261,27 @@ export default function RichEditor({
           ))}
         </div>
       )}
+    </>
+  );
+  return (
+    <div
+      className={"rich-editor " + (readOnly ? "read-only" : "")}
+      onClick={(e) => {
+        if (readOnly) {
+          const a = (e.target as HTMLElement).closest("a");
+          if (a && safeUrl(a.href)) {
+            e.preventDefault();
+            window.open(a.href, "_blank", "noopener,noreferrer");
+          }
+        }
+      }}
+    >
+      {!readOnly &&
+        (toolbarTarget
+          ? createPortal(toolContents, toolbarTarget)
+          : toolbarTarget === undefined
+            ? toolContents
+            : null)}
       <EditorContent editor={editor} />
     </div>
   );

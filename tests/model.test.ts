@@ -152,7 +152,7 @@ test("submit content check needs actual text, not title or image only", () => {
     false,
   );
 });
-test("session validation rejects backwards dates and more than 3 themes", () => {
+test("session validation rejects backwards dates and permits admin-defined theme counts", () => {
   const s = {
     title: "Sesi 1",
     description: "",
@@ -170,8 +170,8 @@ test("session validation rejects backwards dates and more than 3 themes", () => 
     false,
   );
   assert.equal(
-    sessionSchema.safeParse({ ...s, themes: Array(4).fill(s.themes[0]) })
+    sessionSchema.safeParse({ ...s, themes: Array(250).fill(s.themes[0]) })
       .success,
-    false,
+    true,
   );
 });

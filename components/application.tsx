@@ -5,7 +5,13 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Check, CheckCircle2, FileText, PenLine } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  FileText,
+  PenLine,
+} from "lucide-react";
 import { get, set, del } from "idb-keyval";
 import { identitySchema, type Identity, type SessionData } from "@/lib/model";
 import {
@@ -148,7 +154,9 @@ function WriterStart({ step }: { step: number }) {
       {!step ? (
         <main className="simple-home">
           {loading ? (
-            <p className="session-empty" role="status">Memuat...</p>
+            <p className="session-empty" role="status">
+              Memuat...
+            </p>
           ) : session ? (
             <section className="simple-session">
               <h1>{session.title}</h1>
@@ -166,7 +174,10 @@ function WriterStart({ step }: { step: number }) {
         <main className="simple-form-layout">
           <nav className="simple-progress" aria-label="Tahapan penulisan">
             {["Identitas", "Tema", "Menulis"].map((label, i) => (
-              <span key={label} aria-current={step === i + 1 ? "step" : undefined}>
+              <span
+                key={label}
+                aria-current={step === i + 1 ? "step" : undefined}
+              >
                 {label}
               </span>
             ))}
@@ -291,7 +302,7 @@ function WriterStart({ step }: { step: number }) {
                   </p>
                 </div>
                 <div className="themes">
-                  {session.themes.map((t, i) => (
+                  {session.themes.map((t) => (
                     <button
                       key={t.id}
                       className={
@@ -300,10 +311,9 @@ function WriterStart({ step }: { step: number }) {
                       disabled={!t.available}
                       onClick={() => setSelected(t.id!)}
                     >
-                      <span className="theme-number">0{i + 1}</span>
                       <div>
                         <h3>{t.title}</h3>
-                        <p>{t.description}</p>
+                        {t.description && <p>{t.description}</p>}
                         {t.instructions && <small>{t.instructions}</small>}
                         {!t.available && (
                           <span className="badge">Tidak tersedia</span>
@@ -329,7 +339,11 @@ function WriterStart({ step }: { step: number }) {
           </section>
         </main>
       )}
-      {error && <div className="page-alert"><ErrorBox message={error} /></div>}
+      {error && (
+        <div className="page-alert">
+          <ErrorBox message={error} />
+        </div>
+      )}
       <Modal
         open={!!resume && step === 0 && !!session}
         onOpenChange={(v) => {

@@ -180,3 +180,88 @@ test("database protects writers and retains sessions with contributions", async 
   );
   assert.equal((await body()).title, "Revisi final");
 });
+test("theme migration preserves submissions and permits more than three themes, reordering and middle deletion", async () => {
+  const original = (
+    await pg.query<{ theme_id: string }>(
+      "SELECT theme_id FROM submissions WHERE id=$1",
+      [id],
+    )
+  ).rows[0].theme_id;
+  const migration = await readFile("db/002_unlimited_themes.sql", "utf8");
+  await pg.exec(migration);
+  assert.equal(
+    (
+      await pg.query<{ theme_id: string }>(
+        "SELECT theme_id FROM submissions WHERE id=$1",
+        [id],
+      )
+    ).rows[0].theme_id,
+    original,
+  );
+  const ids = [original];
+  for (let i = 1; i < 9; i++) {
+    const r = await pg.query<{ id: string }>(
+      "INSERT INTO session_themes(session_id,title,display_order) VALUES($1,$2,$3) RETURNING id",
+      [session, "Tema " + i, i],
+    );
+    ids.push(r.rows[0].id);
+  }
+  assert.equal(
+    (
+      await pg.query("SELECT id FROM session_themes WHERE session_id=$1", [
+        session,
+      ])
+    ).rows.length,
+    9,
+  );
+  const reversed = [...ids].reverse();
+  await pg.exec("BEGIN");
+  try {
+    for (let i = 0; i < reversed.length; i++)
+      await pg.query(
+        "INSERT INTO session_themes(id,session_id,title,display_order) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET display_order=excluded.display_order",
+        [reversed[i], session, "Tema", i],
+      );
+    await pg.exec("COMMIT");
+  } catch (e) {
+    await pg.exec("ROLLBACK");
+    throw e;
+  }
+  assert.deepEqual(
+    (
+      await pg.query<{ id: string }>(
+        "SELECT id FROM session_themes WHERE session_id=$1 ORDER BY display_order",
+        [session],
+      )
+    ).rows.map((x) => x.id),
+    reversed,
+  );
+  const kept = reversed.filter((_, i) => i !== 3);
+  await pg.exec("BEGIN");
+  try {
+    await pg.query("DELETE FROM session_themes WHERE id=$1", [reversed[3]]);
+    for (let i = 0; i < kept.length; i++)
+      await pg.query("UPDATE session_themes SET display_order=$1 WHERE id=$2", [
+        i,
+        kept[i],
+      ]);
+    await pg.exec("COMMIT");
+  } catch (e) {
+    await pg.exec("ROLLBACK");
+    throw e;
+  }
+  assert.deepEqual(
+    (
+      await pg.query<{ id: string }>(
+        "SELECT id FROM session_themes WHERE session_id=$1 ORDER BY display_order",
+        [session],
+      )
+    ).rows.map((x) => x.id),
+    kept,
+  );
+  await assert.rejects(
+    pg.query("UPDATE session_themes SET display_order=-1 WHERE id=$1", [
+      original,
+    ]),
+  );
+});
