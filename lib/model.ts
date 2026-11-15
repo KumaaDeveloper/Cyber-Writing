@@ -1,4 +1,5 @@
 import { z } from "zod";
+export const digitsOnly = (value: string) => value.replace(/[^0-9]/g, "");
 export const safeUrl = (value: string) => {
   try {
     const u = new URL(value);

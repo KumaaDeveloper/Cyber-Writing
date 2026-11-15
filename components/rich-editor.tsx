@@ -31,7 +31,9 @@ import {
   Table2,
   CheckSquare,
   Highlighter,
+  Palette,
 } from "lucide-react";
+import { ToolMenu } from "./tool-menu";
 import { safeUrl } from "@/lib/model";
 export default function RichEditor({
   content,
@@ -101,6 +103,9 @@ export default function RichEditor({
         }
       }}
     >
+      {!readOnly && <ToolMenu label="Format teks" variant="format">
+        {() => <TextTools editor={editor} />}
+      </ToolMenu>}
       <EditorContent editor={editor} />
     </div>
   );
@@ -120,7 +125,7 @@ export function TextTools({ editor }: { editor: Editor | null }) {
   if (!editor || editor.isDestroyed)
     return <p className="muted">Pilih blok teks untuk mengatur format.</p>;
   const readOnly = !editor.isEditable;
-  const cmd = editor.chain().focus();
+  const cmd = () => editor.chain().focus();
   const tool = (
     title: string,
     icon: React.ReactNode,
@@ -158,8 +163,8 @@ export function TextTools({ editor }: { editor: Editor | null }) {
             }
             onChange={(e) =>
               e.target.value === "p"
-                ? cmd.setParagraph().run()
-                : cmd
+                ? cmd().setParagraph().run()
+                : cmd()
                     .toggleHeading({
                       level: Number(e.target.value) as 1 | 2 | 3,
                     })
@@ -175,61 +180,61 @@ export function TextTools({ editor }: { editor: Editor | null }) {
           {tool(
             "Tebal",
             <Bold />,
-            () => cmd.toggleBold().run(),
+            () => cmd().toggleBold().run(),
             editor.isActive("bold"),
           )}
           {tool(
             "Miring",
             <Italic />,
-            () => cmd.toggleItalic().run(),
+            () => cmd().toggleItalic().run(),
             editor.isActive("italic"),
           )}
           {tool(
             "Garis bawah",
             <Underline />,
-            () => cmd.toggleUnderline().run(),
+            () => cmd().toggleUnderline().run(),
             editor.isActive("underline"),
           )}
           {tool(
             "Coret",
             <Strikethrough />,
-            () => cmd.toggleStrike().run(),
+            () => cmd().toggleStrike().run(),
             editor.isActive("strike"),
           )}
           {tool(
             "Bullet list",
             <List />,
-            () => cmd.toggleBulletList().run(),
+            () => cmd().toggleBulletList().run(),
             editor.isActive("bulletList"),
           )}
           {tool(
             "Daftar bernomor",
             <ListOrdered />,
-            () => cmd.toggleOrderedList().run(),
+            () => cmd().toggleOrderedList().run(),
             editor.isActive("orderedList"),
           )}
           {tool(
             "Checklist",
             <CheckSquare />,
-            () => cmd.toggleTaskList().run(),
+            () => cmd().toggleTaskList().run(),
             editor.isActive("taskList"),
           )}
           {tool(
             "Kutipan",
             <Quote />,
-            () => cmd.toggleBlockquote().run(),
+            () => cmd().toggleBlockquote().run(),
             editor.isActive("blockquote"),
           )}
           {tool(
             "Inline code",
             <Code />,
-            () => cmd.toggleCode().run(),
+            () => cmd().toggleCode().run(),
             editor.isActive("code"),
           )}
           {tool(
             "Code block",
             <span>{"{ }"}</span>,
-            () => cmd.toggleCodeBlock().run(),
+            () => cmd().toggleCodeBlock().run(),
             editor.isActive("codeBlock"),
           )}
           {tool("Tautan HTTPS", <Link />, () => {
@@ -239,11 +244,11 @@ export function TextTools({ editor }: { editor: Editor | null }) {
             );
             if (url === null) return;
             if (!url) {
-              cmd.unsetLink().run();
+              cmd().unsetLink().run();
               return;
             }
             if (safeUrl(url))
-              cmd
+              cmd()
                 .setLink({
                   href: url,
                   target: "_blank",
@@ -253,42 +258,42 @@ export function TextTools({ editor }: { editor: Editor | null }) {
             else window.alert("Gunakan URL HTTPS yang valid.");
           })}
           {tool("Rata kiri", <AlignLeft />, () =>
-            cmd.setTextAlign("left").run(),
+            cmd().setTextAlign("left").run(),
           )}
           {tool("Rata tengah", <AlignCenter />, () =>
-            cmd.setTextAlign("center").run(),
+            cmd().setTextAlign("center").run(),
           )}
           {tool("Rata kanan", <AlignRight />, () =>
-            cmd.setTextAlign("right").run(),
+            cmd().setTextAlign("right").run(),
           )}
           {tool("Sorot", <Highlighter />, () =>
-            cmd.toggleHighlight({ color: "#854d0e" }).run(),
+            cmd().toggleHighlight({ color: "#854d0e" }).run(),
           )}
-          <label className="color-picker" title="Warna teks">
-            <span>A</span>
+          <label className="color-picker" title="Warna teks" style={{ borderBottomColor: editor.getAttributes("textStyle").color || "#fafafa" }}>
+            <Palette size={16} aria-hidden="true" /><span className="tool-label">Warna teks</span>
             <input
               aria-label="Warna teks"
               type="color"
-              defaultValue="#fafafa"
-              onChange={(e) => cmd.setColor(e.target.value).run()}
+              value={editor.getAttributes("textStyle").color || "#fafafa"}
+              onChange={(e) => cmd().setColor(e.target.value).run()}
             />
           </label>
           {tool("Tambah tabel", <Table2 />, () =>
-            cmd.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+            cmd().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
           )}
-          {tool("Undo", <Undo2 />, () => cmd.undo().run())}
-          {tool("Redo", <Redo2 />, () => cmd.redo().run())}
+          {tool("Undo", <Undo2 />, () => cmd().undo().run())}
+          {tool("Redo", <Redo2 />, () => cmd().redo().run())}
         </div>
       )}
       {!readOnly && editor.isActive("table") && (
         <div className="table-tools">
           {[
-            ["+ Baris", () => cmd.addRowAfter().run()],
-            ["− Baris", () => cmd.deleteRow().run()],
-            ["+ Kolom", () => cmd.addColumnAfter().run()],
-            ["− Kolom", () => cmd.deleteColumn().run()],
-            ["Header", () => cmd.toggleHeaderRow().run()],
-            ["Hapus tabel", () => cmd.deleteTable().run()],
+            ["+ Baris", () => cmd().addRowAfter().run()],
+            ["− Baris", () => cmd().deleteRow().run()],
+            ["+ Kolom", () => cmd().addColumnAfter().run()],
+            ["− Kolom", () => cmd().deleteColumn().run()],
+            ["Header", () => cmd().toggleHeaderRow().run()],
+            ["Hapus tabel", () => cmd().deleteTable().run()],
           ].map(([label, fn]) => (
             <button
               key={String(label)}

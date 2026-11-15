@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { get, set, del } from "idb-keyval";
 import type { WriterAccess } from "@/lib/writers";
-import { identitySchema, type Identity, type SessionData } from "@/lib/model";
+import { digitsOnly, identitySchema, type Identity, type SessionData } from "@/lib/model";
 import {
   Brand,
   Button,
@@ -212,6 +212,7 @@ function WriterStart({ step }: { step: number }) {
                   Kamu bisa menulis lagi pada {date(access.next_allowed_at!)}.
                 </p>
               )}
+              <div className="session-actions">
               <Button
                 disabled={locked}
                 onClick={() => router.push("/identity")}
@@ -226,6 +227,7 @@ function WriterStart({ step }: { step: number }) {
                   {isSubmitted ? "Lihat tulisan terakhir" : "Buka draft"}
                 </Button>
               )}
+              </div>
             </section>
           ) : (
             <h1 className="session-empty">Belum Ada Sesi Penulisan</h1>
@@ -295,7 +297,13 @@ function WriterStart({ step }: { step: number }) {
                     <input
                       inputMode="numeric"
                       placeholder="Nomor induk mahasiswa"
+                      pattern="[0-9]*"
+                      maxLength={20}
                       {...form.register("nim")}
+                      onChange={(e) => {
+                        e.target.value = digitsOnly(e.target.value);
+                        void form.register("nim").onChange(e);
+                      }}
                     />
                     <small className="field-error">
                       {form.formState.errors.nim?.message}

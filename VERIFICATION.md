@@ -97,3 +97,9 @@ Sembilan tes tambahan memeriksa batas 24 jam, jeda 0, pembuatan draft idempoten,
 ## Transport Gemini terbaru
 
 Lima tes tambahan memeriksa format REST Google Search/JSON, API key hanya di header, pengabaian part thought, pemetaan error bersarang/JSON/DNS/TLS, probe metadata tanpa artikel, retry setelah HTTP 503, serta status HTTP yang tetap terbaca saat error body bukan JSON. Beranda tidak membuka popup otomatis pada status submitted/reviewed; data lock dan kemampuan membaca tulisan tetap dipertahankan. Koneksi Gemini memakai project API milik pemilik belum dapat diuji di lingkungan ini.
+
+## Revisi model gratis, input dan toolbar lokal
+
+Default Gemini menjadi gemini-3.5-flash-lite dan Search grounding dimatikan secara default. Tes transport/AI memeriksa model, tidak ada tools Google Search pada mode default, sumber model tidak dianggap terverifikasi, dan mode Search opsional tetap memproses sumber grounding. Tes DOM menggunakan komponen menu produksi: toggle, tombol tutup, klik di luar, Escape, penambahan teks, format tebal/miring, undo, dan dua text box yang terpisah. Tes NIM memeriksa penyaringan simbol/huruf, nol di depan dan penolakan nilai non-angka oleh server. Tombol beranda dikelompokkan dengan gap 8px.
+
+Hasil akhir: 44 tes otomatis dan pemeriksaan TypeScript/build produksi dijalankan untuk revisi ini. Pengujian Gemini memakai respons simulasi; API key pemilik dan tampilan pada browser produksi belum diverifikasi.

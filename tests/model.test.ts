@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import {
   identitySchema,
+  digitsOnly,
   documentSchema,
   sessionSchema,
   sessionOpen,
@@ -174,4 +175,11 @@ test("session validation rejects backwards dates and permits admin-defined theme
       .success,
     true,
   );
+});
+
+ test("NIM input strips non-digits, preserves leading zeros, and server rejects non-numeric values", () => {
+  assert.equal(digitsOnly("00 123-45abc/+"), "0012345");
+  assert.equal(digitsOnly("letters only"), "");
+  assert.equal(digitsOnly("0012345678"), "0012345678");
+  assert.equal(identitySchema.safeParse({ ...identity, nim: "12345e6" }).success, false);
 });

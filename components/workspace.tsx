@@ -1,13 +1,10 @@
 "use client";
-import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { get, set, del } from "idb-keyval";
 import {
-  SlidersHorizontal,
-  ChevronDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -61,11 +58,9 @@ import {
   date,
   downloadJson,
 } from "./ui";
+import { ToolMenu } from "./tool-menu";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
-const TextTools = dynamic(
-  () => import("./rich-editor").then((m) => m.TextTools),
-  { ssr: false },
-);
+
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
 const blankRich = { type: "doc", content: [{ type: "paragraph" }] };
 type FullDoc = DocumentData & {
@@ -112,9 +107,6 @@ export default function Workspace({
     [loading, setLoading] = useState(true),
     [drawer, setDrawer] = useState(false),
     [insert, setInsert] = useState(""),
-    [toolsOpen, setToolsOpen] = useState(false),
-    [activeBlockId, setActiveBlockId] = useState(""),
-    [activeEditor, setActiveEditor] = useState<Editor | null>(null),
     [submitOpen, setSubmitOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [confirmDelete, setConfirmDelete] = useState<{
@@ -148,11 +140,6 @@ export default function Workspace({
       )
     : 0;
   const page = doc?.pages[pageIndex];
-  const formatBlockId = page?.blocks.some(
-    (b) => b.id === activeBlockId && "content" in b,
-  )
-    ? activeBlockId
-    : page?.blocks.find((b) => "content" in b)?.id;
   const readOnly = (!admin && !doc?.writable) || (admin && !edit);
   readOnlyRef.current = readOnly;
   const localKey = "cw-" + (admin ? "admin-" : "") + "draft-" + id;
@@ -383,15 +370,12 @@ export default function Workspace({
     });
   }
   function addBlock(type: string) {
-    setToolsOpen(false);
     if (type === "image" || type === "reference" || type === "gallery") {
       setInsert(type);
       return;
     }
     let block: Block;
     const bid = crypto.randomUUID();
-    if (["text", "callout", "warning", "table"].includes(type))
-      setActiveBlockId(bid);
     if (type === "diagram")
       block = {
         id: bid,
@@ -863,34 +847,7 @@ export default function Workspace({
                 />
               </div>
               {!readOnly && (
-                <Button
-                  variant="secondary"
-                  aria-expanded={toolsOpen}
-                  aria-controls="workspace-tools"
-                  onClick={() => setToolsOpen((v) => !v)}
-                >
-                  <SlidersHorizontal size={16} />
-                  Tools
-                  <ChevronDown size={14} />
-                </Button>
-              )}
-            </div>
-            {!readOnly && toolsOpen && (
-              <section
-                id="workspace-tools"
-                className="workspace-tools-panel"
-                aria-label="Tools editor"
-              >
-                <div className="tool-group-heading">
-                  <strong>Tambahkan</strong>
-                  <button
-                    className="icon-button"
-                    aria-label="Tutup tools"
-                    onClick={() => setToolsOpen(false)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                <ToolMenu>{(close) => (
                 <div className="insert-tool-grid">
                   {[
                     ["text", Type, "Teks"],
@@ -907,7 +864,7 @@ export default function Workspace({
                     return (
                       <button
                         key={String(type)}
-                        onClick={() => addBlock(String(type))}
+                        onClick={() => { close(); addBlock(String(type)); }}
                       >
                         <I size={16} />
                         {label as string}
@@ -915,12 +872,9 @@ export default function Workspace({
                     );
                   })}
                 </div>
-                <div className="tool-group-heading">
-                  <strong>Format teks</strong>
-                </div>
-                <TextTools editor={activeEditor} />
-              </section>
-            )}
+                )}</ToolMenu>
+              )}
+            </div>
 
             <article className="paper">
               <div className="paper-eyebrow">
@@ -1033,13 +987,6 @@ export default function Workspace({
                   {"content" in b && (
                     <RichEditor
                       content={b.content}
-                      onReady={(editor) => {
-                        if (b.id === formatBlockId) setActiveEditor(editor);
-                      }}
-                      onActivate={(editor) => {
-                        setActiveBlockId(b.id);
-                        setActiveEditor(editor);
-                      }}
                       readOnly={readOnly}
                       onChange={(v) => blockChange(b.id, { ...b, content: v })}
                     />

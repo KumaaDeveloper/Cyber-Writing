@@ -4,7 +4,7 @@ import type {
 } from "@google/genai";
 import { AppError, fail } from "./security";
 import { geminiError } from "./gemini-errors";
-export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 type Fetcher = typeof fetch;
 export function geminiConfiguration(
   apiKey = process.env.GEMINI_API_KEY || "",

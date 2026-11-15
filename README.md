@@ -20,7 +20,7 @@ Kode reset yang sama hanya dipakai sekali: build selanjutnya tidak mengubah pass
 
 - Pilihan tema dipusatkan pada satu kolom, tanpa nomor dekoratif. Teks dan indikator pilihan disejajarkan secara vertikal; deskripsi kosong tidak menyisakan ruang tambahan.
 - Informasi sesi aktif di beranda tampil dalam box dengan judul, tenggat, dan tombol Mulai Menulis. Saat tidak ada sesi, tetap hanya muncul pesan Belum Ada Sesi Penulisan.
-- Editor memiliki satu tombol **Tools**. Panelnya berisi tambah teks/gambar/galeri/tabel/diagram/referensi serta format teks untuk blok yang sedang dipilih. Toolbar panjang tidak lagi muncul pada setiap blok. Menutup panel tidak membuat ulang editor atau menghapus riwayat undo. Toolbar dirender oleh panel, terpisah dari DOM editor.
+- Tombol **Tools** utama hanya menambah konten. Tiap text box memiliki tombol **Format teks** sendiri dengan toolbar ringkas dan ikon palet untuk warna. Klik ulang, tombol tutup, Escape, atau klik di luar panel akan menutup menu. Menutup panel tidak membuat ulang editor atau menghapus riwayat undo.
 - Admin mulai dari satu tema dan dapat menambah sebanyak yang dibutuhkan. Tidak ada batas hitungan tiga tema pada form atau server; minimal satu tema tetap diperlukan. Batas ukuran request total tetap berlaku.
 - Migrasi `002_unlimited_themes.sql` menghapus batas indeks 0–2 serta memungkinkan perubahan urutan tema dalam transaksi. Migrasi mempertahankan ID dan relasi tema pada tulisan lama. Tema yang sudah dipakai tulisan tetap tidak dapat dihapus; admin dapat menonaktifkannya.
 - Deploy melalui `npm run build` menjalankan migrasi baru secara otomatis pada Production yang memiliki DATABASE_URL. Alternatif manual: `npm run db:migrate`.
@@ -31,7 +31,7 @@ Nama tampilan website, judul tab, dan label dokumen menjadi **CYWRITE**. Logo or
 
 Tombol Pratinjau penulis, tautan Sumber referensi/Catatan pengurus pada sidebar, serta penghitung “halaman · sumber” pada bar atas dihapus. Data sumber/catatan yang sudah tersimpan tidak dihapus dari database. Ringkasan kirim tulisan tetap tersedia.
 
-Toolbar teks sekarang menjadi komponen terpisah yang menerima instance editor aktif; tidak lagi memakai portal ke elemen yang hilang saat panel ditutup. Editor tetap terpasang saat panel Tools buka/tutup, sehingga isi, seleksi dan undo tidak hilang. Penambahan blok teks baru mengaktifkan editor blok tersebut. Unit test DOM memeriksa siklus tambah teks → ketik → buka Tools → format → buka/tutup berulang → undo → tambah teks lagi.
+Toolbar teks menerima instance editor milik text box yang bersangkutan. Editor tetap terpasang saat menu buka/tutup sehingga isi, seleksi dan undo tidak hilang. Tes DOM memeriksa toggle menu tambah konten, penutupan melalui pilihan/Escape/klik luar, format dan undo, serta isolasi format antara dua text box.
 
 ## Revisi pengiriman dan Gemini
 
@@ -43,14 +43,14 @@ Toolbar teks sekarang menjadi komponen terpisah yang menerima instance editor ak
 - Migrasi `003_writer_cooldown.sql` membuat pengaturan dan riwayat jeda, mengisi riwayat dari pengiriman lama, dan menghapus constraint lama yang membatasi satu tulisan per sesi selamanya. Build Production menjalankannya otomatis jika DATABASE_URL tersedia.
 - Kartu sesi memakai tipografi seragam dan tanggal Mulai/Berakhir yang terpisah. Kolom Aksi pada daftar tulisan hanya berisi bintang dan hapus; klik judul tulisan untuk membukanya.
 - Gemini sekarang membedakan API key tidak valid, izin, billing, model tidak ditemukan, kuota, timeout, gangguan layanan, output kosong, dan JSON/nomor halaman tidak valid. Detail kredensial atau isi tulisan tidak dicetak ke log.
-- Request menggunakan REST resmi Google dengan status HTTP eksplisit, tanpa retry tersembunyi SDK. Aplikasi mencoba ulang sekali hanya untuk error layanan 5xx, dengan jeda pendek dan batas total 95 detik. Error kredensial dan kuota tidak diulang otomatis. Riset Google Search dan pemformatan JSON tetap terpisah.
+- Request menggunakan REST resmi Google dengan status HTTP eksplisit, tanpa retry tersembunyi SDK. Aplikasi mencoba ulang sekali hanya untuk error layanan 5xx, dengan jeda pendek dan batas total 95 detik. Error kredensial dan kuota tidak diulang otomatis. Analisis dan pemformatan JSON tetap terpisah. Google Search hanya diaktifkan jika GEMINI_SEARCH_GROUNDING=true.
 - Respons AI divalidasi sebelum disimpan. Tidak ada sumber grounding berarti hasil ditandai Kurang Valid/belum terverifikasi, bukan Valid. Hasil versi konten yang sama tetap memakai cache.
 
 Panggilan Gemini asli membutuhkan API key dan project Google yang memiliki akses/kuota. Tes lokal memakai transport simulasi; koneksi Google AI Studio dan Neon milik pemilik belum diuji di lingkungan pembangunan ini.
 
 ## Revisi koneksi Gemini dan beranda
 
-- Default model diperbarui ke `gemini-3.8-flash`, sesuai model teks yang mendukung Google Search dan structured output pada dokumentasi Google. Environment GEMINI_MODEL yang sudah tersimpan tetap dipakai; ubah nilainya di Vercel lalu Redeploy untuk beralih model.
+- Default model diperbarui ke `gemini-3.5-flash-lite`, sesuai model teks yang mendukung Google Search dan structured output pada dokumentasi Google. Environment GEMINI_MODEL yang sudah tersimpan tetap dipakai; ubah nilainya di Vercel lalu Redeploy untuk beralih model.
 - Transport pemeriksaan memakai REST resmi `generativelanguage.googleapis.com/v1beta/models/...:generateContent`. Key dikirim lewat header x-goog-api-key, bukan URL. Isi pemikiran internal (part thought) tidak dipakai sebagai jawaban pemeriksaan.
 - Pembacaan error kini mencakup exception bersarang, kode HTTP di JSON message, nama status Google (NOT_FOUND, RESOURCE_EXHAUSTED), serta penyebab DNS/TLS/koneksi. Tidak ada error/credential mentah yang dikembalikan ke browser.
 - **Pengaturan → Uji koneksi Gemini** melakukan GET metadata model menggunakan API key yang sama. Pengujian ini tidak mengirim tulisan dan tidak menjalankan generasi berbayar; hasil menunjukkan model tersedia atau error akses. Ini memeriksa koneksi/model, bukan menjamin hasil fact-check atau kemampuan grounding pada setiap permintaan.
@@ -108,7 +108,8 @@ Buka `http://localhost:3000`. Masuk admin melalui `http://localhost:3000/admin`,
 | `ADMIN_USERNAME` | Username bootstrap; default `admin`. |
 | `ADMIN_BOOTSTRAP_PASSWORD` | Password bootstrap minimal 12 karakter dan maksimal 72 byte UTF-8. Hanya diperlukan saat membuat admin pertama. |
 | `GEMINI_API_KEY` | API key Gemini; server saja. |
-| `GEMINI_MODEL` | Default `gemini-3.8-flash`; pilih model yang mendukung Search grounding dan structured output. |
+| `GEMINI_MODEL` | Default `gemini-3.5-flash-lite`; environment yang sudah diisi tetap dipakai. |
+| `GEMINI_SEARCH_GROUNDING` | Default `false`: analisis tanpa Search untuk free tier. Isi `true` hanya bila project memiliki akses Search grounding. |
 | `CLOUDINARY_CLOUD_NAME` | Nama cloud Cloudinary. |
 | `CLOUDINARY_API_KEY` | API key Cloudinary server. |
 | `CLOUDINARY_API_SECRET` | API secret Cloudinary server. |
@@ -259,5 +260,11 @@ Backup database dan retensi data peserta diatur pemilik aplikasi melalui Neon. J
 - Next.js cookies: https://nextjs.org/docs/app/api-reference/functions/cookies
 - Google Search grounding: https://ai.google.dev/gemini-api/docs/google-search
 - Gemini structured output: https://ai.google.dev/gemini-api/docs/structured-output
-- Model Gemini 3.8 Flash: https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
+- Model Gemini 3.5 Flash-Lite: https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite
 - Batas Vercel Functions: https://vercel.com/docs/functions/limitations
+
+## Revisi free tier dan kontrol editor
+
+Default model adalah `gemini-3.5-flash-lite`. Di Vercel ubah `GEMINI_MODEL` ke nilai tersebut; biarkan `GEMINI_SEARCH_GROUNDING` kosong atau `false`, lalu Redeploy. Google mencantumkan generasi teks model ini pada free tier, tetapi Search grounding tidak tersedia pada tier itu. Karena itu aplikasi tidak lagi mengaktifkan Search secara default. Pemeriksaan tanpa Search menggunakan pengetahuan model dan materi yang dikirim; hasil diberi penanda belum terverifikasi dari internet, tanpa sumber hasil karangan model. Kuota dan akses project tetap mengikuti Google. Referensi: https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite
+
+NIM disaring menjadi digit ASCII saat mengetik maupun paste; nol di depan tetap dipertahankan dan validasi server tetap berlaku. Tombol pada box sesi kini satu grup dengan jarak 8px. Menu Tools utama berupa dropdown tetap dekat tombol; format teks ditangani secara lokal di tiap text box.

@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   generateGeminiContent,
+  DEFAULT_GEMINI_MODEL,
+  geminiConfiguration,
   checkGeminiConnection,
 } from "../lib/gemini-transport";
 import { geminiError, geminiStatus } from "../lib/gemini-errors";
@@ -36,7 +38,7 @@ test("REST transport sends key in headers, serializes Google Search/JSON correct
   };
   const result = await generateGeminiContent(
     {
-      model: "gemini-3.8-flash",
+      model: "gemini-3.5-flash-lite",
       contents: "Materi artikel",
       config: {
         systemInstruction: "Periksa fakta",
@@ -63,7 +65,7 @@ test("REST transport sends key in headers, serializes Google Search/JSON correct
   );
   await generateGeminiContent(
     {
-      model: "gemini-3.8-flash",
+      model: "gemini-3.5-flash-lite",
       contents: "Format",
       config: {
         responseMimeType: "application/json",
@@ -113,13 +115,13 @@ test("connection check requests model metadata only and distinguishes a missing 
     init: RequestInit | undefined;
   const result = await checkGeminiConnection({
     apiKey: "test-fixture-key",
-    model: "gemini-3.8-flash",
+    model: "gemini-3.5-flash-lite",
     request: async (input, options) => {
       url = String(input);
       init = options;
       return new Response(
         JSON.stringify({
-          name: "models/gemini-3.8-flash",
+          name: "models/gemini-3.5-flash-lite",
           supportedGenerationMethods: ["generateContent", "countTokens"],
         }),
         { status: 200 },
@@ -127,9 +129,9 @@ test("connection check requests model metadata only and distinguishes a missing 
     },
   });
   assert.equal(result.ok, true);
-  assert.equal(result.model, "gemini-3.8-flash");
+  assert.equal(result.model, "gemini-3.5-flash-lite");
   assert.equal(init?.body, undefined);
-  assert.ok(url.endsWith("/models/gemini-3.8-flash"));
+  assert.ok(url.endsWith("/models/gemini-3.5-flash-lite"));
   await assert.rejects(
     checkGeminiConnection({
       apiKey: "test-fixture-key",
@@ -213,7 +215,8 @@ test("review completes through REST after one transient HTTP 503", async () => {
     },
     {
       apiKey: "test-fixture-key",
-      model: "gemini-3.8-flash",
+      model: "gemini-3.5-flash-lite",
+      searchGrounding: true,
       generate: (p) => generateGeminiContent(p, "test-fixture-key", request),
       sleep: async () => {},
     },
@@ -221,4 +224,10 @@ test("review completes through REST after one transient HTTP 503", async () => {
   assert.equal(calls, 3);
   assert.equal(result.status, "VALID");
   assert.equal(result.sources[0].title, "CISA");
+});
+
+test("requested Flash Lite model is the default and explicit environment configuration is retained", () => {
+  assert.equal(DEFAULT_GEMINI_MODEL, "gemini-3.5-flash-lite");
+  assert.equal(geminiConfiguration("fixture", DEFAULT_GEMINI_MODEL).model, "gemini-3.5-flash-lite");
+  assert.equal(geminiConfiguration("fixture", "models/other-model").model, "other-model");
 });

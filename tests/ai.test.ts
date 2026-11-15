@@ -44,7 +44,8 @@ const research = response({
 });
 const options = {
   apiKey: "test-fixture-key",
-  model: "gemini-2.5-flash",
+  model: "gemini-3.5-flash-lite",
+  searchGrounding: true,
   sleep: async () => {},
 };
 test("Gemini review sends no author identity, uses grounding then structured JSON, and preserves sources", async () => {
@@ -145,4 +146,32 @@ test("invalid JSON or invalid page numbers are rejected and missing grounding ca
   assert.equal(r.status, "KURANG VALID");
   assert.equal(r.findings[0].status, "KURANG VALID");
   assert.match(r.summary, /belum terverifikasi/);
+});
+
+test("default free-tier review never enables Search and never presents model citations as verified sources", async () => {
+  const previous = process.env.GEMINI_SEARCH_GROUNDING;
+  delete process.env.GEMINI_SEARCH_GROUNDING;
+  const calls: GenerateContentParameters[] = [];
+  try {
+    const result = await reviewDocument(doc, {
+      apiKey: "test-fixture-key",
+      generate: async (p) => {
+        calls.push(p);
+        return calls.length === 1 ? research : response({ text: json });
+      },
+    });
+    assert.equal(calls.length, 2);
+    for (const call of calls) {
+      assert.equal(call.model, "gemini-3.5-flash-lite");
+      assert.equal(call.config?.tools, undefined);
+    }
+    assert.match(String(calls[0].config?.systemInstruction), /Tidak ada akses penelusuran/);
+    assert.equal(result.status, "KURANG VALID");
+    assert.deepEqual(result.sources, []);
+    assert.equal(result.search_html, "");
+    assert.match(result.summary, /tanpa penelusuran web.*belum terverifikasi/);
+  } finally {
+    if (previous === undefined) delete process.env.GEMINI_SEARCH_GROUNDING;
+    else process.env.GEMINI_SEARCH_GROUNDING = previous;
+  }
 });
