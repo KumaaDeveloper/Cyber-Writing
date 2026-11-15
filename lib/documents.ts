@@ -5,6 +5,7 @@ import {
   recordSubmission,
 } from "./writers";
 import { fail } from "./security";
+import { draftExpired } from "./draft-expiry";
 import {
   type DocumentData,
   type Page,
@@ -21,6 +22,8 @@ export async function getDocument(
     e,
   );
   if (!s) fail(404, "Tulisan tidak ditemukan.");
+  const [clock] = await rows(sql`SELECT now() AS server_now`, e);
+  if (draftExpired(s as any, new Date(clock.server_now))) fail(410, "Draft dihapus otomatis setelah 24 jam tanpa perubahan.");
   const pages = await rows<Page>(
     sql`SELECT id,title,content_json AS blocks FROM submission_pages WHERE submission_id=${id} ORDER BY page_number`,
     e,
@@ -92,6 +95,8 @@ export async function lockDocument(
   );
   if (!s || (ownerHash && s.owner_hash !== ownerHash))
     fail(404, "Tulisan tidak ditemukan atau akses ditolak.");
+  const [clock] = await rows(sql`SELECT now() AS server_now`, e);
+  if (draftExpired(s as any, new Date(clock.server_now))) fail(410, "Draft dihapus otomatis setelah 24 jam tanpa perubahan.");
   if (
     ownerHash &&
     !(allowSubmitted && s.status === "submitted") &&
@@ -128,10 +133,11 @@ export async function writeContent(id: string, doc: DocumentData, e: Executor) {
       sql`INSERT INTO submission_references(id,submission_id,title,url,publisher,accessed_at) VALUES(${r.id},${id},${r.title},${r.url},${r.publisher},${r.accessed_at || null})`,
       e,
     );
-  await rows(
-    sql`UPDATE submissions SET title=${doc.title},content_version=content_version+1,updated_at=now() WHERE id=${id}`,
+  const [saved] = await rows(
+    sql`UPDATE submissions SET title=${doc.title},content_version=content_version+1,updated_at=now() WHERE id=${id} RETURNING updated_at`,
     e,
   );
+  return saved;
 }
 export async function saveDocument(
   id: string,
@@ -162,7 +168,7 @@ export async function saveDocument(
       sql`DELETE FROM submission_revisions WHERE submission_id=${id} AND id NOT IN (SELECT id FROM submission_revisions WHERE submission_id=${id} ORDER BY created_at DESC LIMIT 50)`,
       tx,
     );
-    await writeContent(id, doc, tx);
+    const saved = await writeContent(id, doc, tx);
     if (submit) {
       await rows(
         sql`UPDATE submissions SET status='submitted',submitted_at=now() WHERE id=${id}`,
@@ -177,6 +183,7 @@ export async function saveDocument(
 
     return {
       version: doc.version + 1,
+      updated_at: saved.updated_at,
       status: submit ? "submitted" : s.status,
     };
   });

@@ -127,3 +127,9 @@ Pengujian browser dengan viewport 320/390/768/1280 px telah disiapkan tetapi tid
 Header tidak lagi memuat tombol Tema atau keluar. Ikon keluar berpanah dipindahkan ke kanan bawah sidebar, menggunakan penyimpanan sebelum navigasi yang sama. Daftar halaman dapat digulir, tombol tambah berada setelah daftar, dan informasi tema berada di bagian bawah. Menu titik tiga beserta kode/CSS yang tidak terpakai dihapus; toolbar Format teks tetap tersedia pada mobile. Tampilan desktop tetap menyediakan pengaturan blok.
 
 66 tes otomatis berhasil dan build produksi beserta pemeriksaan TypeScript berhasil. Perubahan tata letak berdasarkan screenshot yang diberikan; pengujian visual pada browser/perangkat mobile fisik belum dilakukan.
+
+## Lima revisi admin dan masa aktif draft
+
+73 tes otomatis berhasil. Enam tes lifecycle tambahan memeriksa tutup/hapus sesi tanpa pengiriman tanggal, sesi berisi tulisan ditutup tanpa kehilangan tulisan terkirim, pembukaan sesi dan konflik jadwal, format tanggal WIB/PostgreSQL, batas tepat 24 jam, penolakan baca/simpan draft kedaluwarsa, penghapusan data terkait serta antrean gambar, dan pembaruan waktu aktivitas saat menyimpan. Satu tes DOM memeriksa password terlihat saat mata ditahan dan tersensor saat pointer dilepas/dibatalkan, window blur, tab tidak aktif, serta Space dilepas; aksi mata tidak mengirim formulir.
+
+TypeScript dan build produksi diperiksa. Database uji menggunakan PGlite; Neon/Cloudinary milik pemilik dan cron Vercel produksi belum dijalankan dari lingkungan ini. Penghapusan draft dipaksakan oleh waktu server saat akses. Cron harian untuk situs tanpa pengunjung memerlukan CRON_SECRET; penghapusan fisik dapat berlangsung pada cron berikutnya.

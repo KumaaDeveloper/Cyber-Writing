@@ -47,6 +47,8 @@ import {
   date,
 } from "./ui";
 import Workspace from "./workspace";
+import { PasswordInput } from "./password-input";
+import { wibDateToISO } from "@/lib/session-dates";
 export default function Admin() {
   const path = usePathname(),
     router = useRouter();
@@ -154,7 +156,7 @@ export default function Admin() {
               {nav.find((n) => n[0] === section)?.[2] || "Dashboard"}
             </strong>
           </div>
-          <span className="badge">
+          <span className="badge admin-account-badge">
             <span className="green-dot" /> {auth.username}
           </span>
         </header>
@@ -234,7 +236,7 @@ function AdminLogin({
           </label>
           <label>
             Kata sandi
-            <input
+            <PasswordInput
               type="password"
               autoComplete="current-password"
               placeholder="Masukkan kata sandi"
@@ -256,7 +258,7 @@ function Dashboard() {
     [sessions, setSessions] = useState<SessionData[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
-    Promise.all([
+    const load = () => Promise.all([
       api("admin/dashboard"),
       api("admin/submissions"),
       api("admin/sessions"),
@@ -267,6 +269,9 @@ function Dashboard() {
         setSessions(se);
       })
       .catch((e) => setError(errorText(e)));
+    void load();
+    const timer = setInterval(() => void load(), 60000);
+    return () => clearInterval(timer);
   }, []);
   const active = sessions.find((s) => sessionOpen(s));
   return (
@@ -393,6 +398,8 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
       .finally(() => setLoading(false));
   useEffect(() => {
     void load();
+    const timer = setInterval(() => void load(), 60000);
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     if (autoCreate) create();
@@ -491,22 +498,8 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
                     variant="ghost"
                     onClick={async () => {
                       try {
-                        await api("admin/sessions/" + s.id, "PUT", {
-                          ...s,
-                          status: state === "open" ? "closed" : "open",
-                          start_at:
-                            state === "open"
-                              ? s.start_at
-                              : new Date().toISOString(),
-                          end_at:
-                            state === "open"
-                              ? s.end_at
-                              : new Date(
-                                  Math.max(
-                                    new Date(s.end_at).getTime(),
-                                    Date.now() + 5 * 86400000,
-                                  ),
-                                ).toISOString(),
+                        await api("admin/sessions/" + s.id, "PATCH", {
+                          status: s.status !== "closed" && state !== "closed" ? "closed" : "open",
                         });
                         await load();
                       } catch (e) {
@@ -514,7 +507,7 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
                       }
                     }}
                   >
-                    {state === "open" ? "Tutup sesi" : "Buka sesi"}{" "}
+                    {s.status !== "closed" && state !== "closed" ? "Tutup sesi" : "Buka sesi"}{" "}
                     <ArrowRight size={13} />
                   </Button>
                 </div>
@@ -540,10 +533,8 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
               try {
                 const body = {
                   ...editing,
-                  start_at: new Date(
-                    editing.start_at + ":00+07:00",
-                  ).toISOString(),
-                  end_at: new Date(editing.end_at + ":00+07:00").toISOString(),
+                  start_at: wibDateToISO(editing.start_at),
+                  end_at: wibDateToISO(editing.end_at),
                 };
                 await api(
                   "admin/sessions" + (editing.id ? "/" + editing.id : ""),
@@ -749,8 +740,8 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
       <Modal
         open={!!remove}
         onOpenChange={() => setRemove(null)}
-        title="Hapus sesi?"
-        description="Hanya sesi tanpa tulisan yang dapat dihapus. Sesi dengan tulisan harus ditutup untuk menjaga data."
+        title={Number(remove?.count) > 0 ? "Tutup sesi ini?" : "Hapus sesi ini?"}
+        description={Number(remove?.count) > 0 ? "Sesi akan ditutup. Tulisan peserta tetap tersimpan." : "Sesi kosong akan dihapus."}
       >
         <ErrorBox message={error} />
         <div className="form-bottom">
@@ -769,7 +760,7 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
               }
             }}
           >
-            Hapus sesi
+            {Number(remove?.count) > 0 ? "Tutup sesi" : "Hapus sesi"}
           </Button>
         </div>
       </Modal>
@@ -832,6 +823,7 @@ function SubmissionList({
       clearTimeout(timer);
     };
   }, [q, session, status, theme, page, starred, ai, refresh]);
+  useEffect(() => { const timer = setInterval(() => setRefresh((value) => value + 1), 60000); return () => clearInterval(timer); }, []);
   const themes = [
     ...new Set(
       sessions
@@ -1134,7 +1126,7 @@ function AdminSettings() {
           >
             <label>
               Kata sandi saat ini
-              <input
+              <PasswordInput
                 type="password"
                 autoComplete="current-password"
                 required
@@ -1143,7 +1135,7 @@ function AdminSettings() {
             </label>
             <label>
               Kata sandi baru
-              <input
+              <PasswordInput
                 type="password"
                 minLength={12}
                 autoComplete="new-password"

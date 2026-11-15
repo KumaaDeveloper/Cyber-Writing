@@ -4,7 +4,7 @@ import { writerAccess, createDraft } from "@/lib/writers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
 import sharp from "sharp";
 import { db, rows, sql } from "@/lib/db";
@@ -38,6 +38,8 @@ import { cachedPageReview, checkPage, listPageReviews, reviewSummaryJoin } from 
 import { decoratePageReviews } from "@/lib/page-reviews";
 import { queueAssetDeletion, cleanDeletedAssets } from "@/lib/assets";
 import { imageUploadError, MAX_IMAGE_BYTES, MAX_IMAGE_REQUEST_BYTES } from "@/lib/uploads";
+import { changeSessionStatus, removeOrCloseSession } from "@/lib/sessions";
+import { cleanupExpiredDrafts } from "@/lib/maintenance";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -53,6 +55,21 @@ async function handler(
     const { path } = await context.params;
     const [area, id, action] = path;
     const method = req.method;
+    if (area === "maintenance" && method === "GET") {
+      const secret = process.env.CRON_SECRET;
+      if (!secret || secret.length < 32) fail(503, "CRON_SECRET belum dikonfigurasi.");
+      const supplied = Buffer.from(req.headers.get("authorization") || "");
+      const expected = Buffer.from("Bearer " + secret);
+      if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) fail(401, "Akses ditolak.");
+      let deleted = 0;
+      for (let batch = 0; batch < 10; batch++) {
+        const count = await cleanupExpiredDrafts();
+        deleted += count;
+        if (count < 100) break;
+      }
+      await cleanDeletedAssets().catch(() => {});
+      return json({ deleted });
+    }
     if (area === "public" && method === "GET") {
       if (!process.env.DATABASE_URL)
         return json({ session: null, configured: false });
@@ -118,11 +135,12 @@ async function handler(
     }
     if (area === "drafts") {
       const ownerHash = await owner(method === "POST" && !id);
+      if (await cleanupExpiredDrafts()) await cleanDeletedAssets().catch(() => {});
       if (method === "GET" && !id) {
         return json({
           writer_access: await writerAccess(ownerHash),
           drafts: await rows(
-            sql`SELECT s.id,s.title,s.status,s.submitted_at,s.updated_at,ws.title AS session_title FROM submissions s JOIN writing_sessions ws ON ws.id=s.session_id WHERE owner_hash=${ownerHash} ORDER BY s.updated_at DESC LIMIT 30`,
+            sql`SELECT s.id,s.title,s.status,s.submitted_at,s.updated_at,ws.title AS session_title FROM submissions s JOIN writing_sessions ws ON ws.id=s.session_id WHERE owner_hash=${ownerHash} AND (s.status<>'draft' OR s.updated_at>now()-interval '24 hours') ORDER BY s.updated_at DESC LIMIT 30`,
           ),
         });
       }
@@ -251,19 +269,25 @@ async function handler(
     }
     if (area === "admin") {
       const a = await admin();
+      if (await cleanupExpiredDrafts()) await cleanDeletedAssets().catch(() => {});
       const resource = id;
       const target = action;
       const sub = path[3];
       if (resource === "dashboard" && method === "GET") {
         const [stats] = await rows(
-          sql`SELECT (SELECT count(*)::int FROM writing_sessions) AS sessions,(SELECT count(*)::int FROM writing_sessions WHERE status<>'closed' AND start_at<=now() AND end_at>now()) AS active,(SELECT count(DISTINCT nim)::int FROM writers) AS writers,count(*)::int AS submissions,count(*) FILTER(WHERE status='draft')::int AS drafts,count(*) FILTER(WHERE status='submitted')::int AS submitted,count(*) FILTER(WHERE is_starred)::int AS starred,(SELECT count(DISTINCT submission_id)::int FROM ai_reviews) AS reviewed FROM submissions`,
+          sql`SELECT (SELECT count(*)::int FROM writing_sessions) AS sessions,(SELECT count(*)::int FROM writing_sessions WHERE status<>'closed' AND start_at<=now() AND end_at>now()) AS active,(SELECT count(DISTINCT w.nim)::int FROM writers w WHERE EXISTS(SELECT 1 FROM submissions live WHERE live.writer_id=w.id AND (live.status<>'draft' OR live.updated_at>now()-interval '24 hours'))) AS writers,count(*)::int AS submissions,count(*) FILTER(WHERE status='draft')::int AS drafts,count(*) FILTER(WHERE status='submitted')::int AS submitted,count(*) FILTER(WHERE is_starred)::int AS starred,(SELECT count(DISTINCT r.submission_id)::int FROM ai_reviews r JOIN submissions live ON live.id=r.submission_id WHERE live.status<>'draft' OR live.updated_at>now()-interval '24 hours') AS reviewed FROM submissions WHERE status<>'draft' OR updated_at>now()-interval '24 hours'`,
         );
         return json(stats);
       }
       if (resource === "sessions") {
+        if (method === "PATCH") {
+          uuid(target);
+          const body = z.object({ status: z.enum(["open", "closed"]) }).strict().parse(await readJson(req));
+          return json(await changeSessionStatus(target, body.status, a.id));
+        }
         if (method === "GET") {
           const all = await rows(
-            sql`SELECT ws.*,(SELECT count(*)::int FROM submissions s WHERE s.session_id=ws.id) AS count FROM writing_sessions ws ORDER BY start_at DESC`,
+            sql`SELECT ws.*,(SELECT count(*)::int FROM submissions s WHERE s.session_id=ws.id AND (s.status<>'draft' OR s.updated_at>now()-interval '24 hours')) AS count FROM writing_sessions ws ORDER BY start_at DESC`,
           );
           for (const s of all)
             s.themes = await rows(
@@ -351,27 +375,7 @@ async function handler(
         }
         if (method === "DELETE") {
           uuid(target);
-          await db().transaction(async (tx) => {
-            await rows(
-              sql`SELECT id FROM writing_sessions WHERE id=${target} FOR UPDATE`,
-              tx,
-            );
-            const used = await rows(
-              sql`SELECT id FROM submissions WHERE session_id=${target} LIMIT 1`,
-              tx,
-            );
-            if (used.length)
-              fail(
-                409,
-                "Sesi berisi tulisan tidak dapat dihapus. Gunakan Tutup Sesi.",
-              );
-            await rows(
-              sql`DELETE FROM writing_sessions WHERE id=${target}`,
-              tx,
-            );
-            await audit(a.id, "session.delete", target, tx);
-          });
-          return json({ ok: true });
+          return json(await removeOrCloseSession(target, a.id));
         }
       }
       if (resource === "submissions") {
@@ -387,7 +391,7 @@ async function handler(
             1,
             Math.min(100000, Number(u.searchParams.get("page")) || 1),
           );
-          const where = sql`(${q}='' OR w.name ILIKE ${"%" + q + "%"} OR w.nim ILIKE ${"%" + q + "%"}) AND (${session}='' OR s.session_id::text=${session}) AND (${status}='' OR s.status=${status}) AND (${theme}='' OR t.title=${theme}) AND (NOT ${star} OR s.is_starred) AND (NOT ${ai} OR r.id IS NOT NULL)`;
+          const where = sql`(${q}='' OR w.name ILIKE ${"%" + q + "%"} OR w.nim ILIKE ${"%" + q + "%"}) AND (${session}='' OR s.session_id::text=${session}) AND (${status}='' OR s.status=${status}) AND (${theme}='' OR t.title=${theme}) AND (NOT ${star} OR s.is_starred) AND (NOT ${ai} OR r.id IS NOT NULL) AND (s.status<>'draft' OR s.updated_at>now()-interval '24 hours')`;
           const data = await rows(
             sql`SELECT s.id,s.title,s.status,s.is_starred,s.updated_at,s.content_version,w.name,w.nim,w.membership_status,w.department,t.title AS theme_title,ws.title AS session_title,r.status AS ai_status,r.content_version AS ai_version,(SELECT count(*)::int FROM submission_pages p WHERE p.submission_id=s.id) AS pages,(SELECT count(DISTINCT p.id)::int FROM submission_pages p JOIN ai_reviews ar ON ar.page_id=p.id WHERE p.submission_id=s.id) AS ai_checked_pages,count(*) OVER()::int AS total FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id ${reviewSummaryJoin} WHERE ${where} ORDER BY s.updated_at DESC LIMIT 15 OFFSET ${(page - 1) * 15}`,
           );

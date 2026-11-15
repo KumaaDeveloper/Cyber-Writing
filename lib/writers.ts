@@ -107,7 +107,7 @@ export async function createDraft(
       fail(400, "NIM tidak sesuai aturan sesi.");
     await assertWriterAvailable(ownerHash, identity.nim, tx);
     const [existing] = await rows(
-      sql`SELECT id FROM submissions WHERE owner_hash=${ownerHash} AND session_id=${sessionId} AND status IN ('draft','revision') ORDER BY updated_at DESC LIMIT 1`,
+      sql`SELECT id FROM submissions WHERE owner_hash=${ownerHash} AND session_id=${sessionId} AND status IN ('draft','revision') AND (status<>'draft' OR updated_at>now()-interval '24 hours') ORDER BY updated_at DESC LIMIT 1`,
       tx,
     );
     if (existing) return existing;

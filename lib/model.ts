@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeSessionDate } from "./session-dates";
 export const digitsOnly = (value: string) => value.replace(/[^0-9]/g, "");
 export const safeUrl = (value: string) => {
   try {
@@ -184,8 +185,8 @@ export const sessionSchema = z
   .object({
     title: z.string().trim().min(2).max(150),
     description: z.string().max(2000),
-    start_at: z.iso.datetime({ offset: true }),
-    end_at: z.iso.datetime({ offset: true }),
+    start_at: z.preprocess(normalizeSessionDate, z.iso.datetime({ offset: true })),
+    end_at: z.preprocess(normalizeSessionDate, z.iso.datetime({ offset: true })),
     max_pages: z.number().int().min(1).max(30),
     status: z.enum(["scheduled", "open", "closed"]),
     themes: z.array(themeSchema).min(1),

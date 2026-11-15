@@ -302,3 +302,29 @@ Tombol titik tiga/Opsi blok dihapus dari editor mobile. Menu Format teks dan Too
 Mengetuk tepi atau sel tabel memunculkan tombol Hapus tabel di luar menu format. Tindakan ini menghapus tabel yang dipilih, mempertahankan teks dan tabel lain, dan dapat dibatalkan lewat Undo.
 
 Batas unggahan gambar adalah 2 MB (2.097.152 byte) per file JPG, PNG, atau WebP. Validasi yang sama dipakai frontend dan server; galeri diperiksa sebelum unggahan dimulai. Server tetap memeriksa format gambar yang sebenarnya. Batas ini berlaku untuk unggahan file; tautan HTTPS tetap merupakan gambar eksternal yang ditampilkan langsung.
+
+## Pratinjau tautan dan perbaikan admin
+
+Judul pratinjau: CYWRITE — KSM Cyber Security UPNVJ.
+Deskripsi: Yuk, ikut berkarya bersama KSM Cyber Security UPNVJ. Mulai dari tulisanmu!
+Metadata title, description, Open Graph, dan Twitter diperbarui bersama. Pratinjau pesan yang sudah pernah dibagikan dapat mengikuti cache aplikasi penerima.
+
+Tutup/Buka sesi memakai PATCH dengan status saja; tanggal tidak dikirim ulang. Sesi kosong dapat dihapus. Menghapus sesi yang masih berisi tulisan menutup sesi tersebut dan mempertahankan tulisan peserta. Tanggal editor WIB menerima input menit atau detik; format timestamp PostgreSQL dinormalisasi sebelum validasi ISO. Badge akun di kanan atas admin disembunyikan pada mobile.
+
+Password admin memiliki tombol mata yang dibuka selama ditahan, kemudian tertutup saat dilepas, dibatalkan, berpindah fokus, atau tab tidak aktif. Mendukung pointer sentuh/mouse dan menahan Space/Enter dengan keyboard; klik biasa tidak meninggalkan password terbuka.
+
+## Draft tidak aktif selama 24 jam
+
+Berlaku hanya untuk status draft, berdasarkan updated_at dan waktu database. Setiap penyimpanan berhasil memperbarui aktivitas. Status submitted, reviewed, dan revision tidak dihapus oleh aturan ini. Draft yang sudah kedaluwarsa tidak dapat dibaca atau disimpan ulang oleh penulis maupun admin.
+
+Saat daftar admin/penulis diakses, server membersihkan draft yang kedaluwarsa. Daftar dan workspace yang sedang terbuka memeriksa pembaruan setiap 60 detik. Data halaman, referensi, ulasan, catatan, dan riwayat ikut terhapus melalui relasi database. Akun peserta yang tidak lagi digunakan dihapus; gambar masuk antrean pembersihan Cloudinary. Salinan lokal draft yang dihapus dibersihkan saat editor menerima status tidak ditemukan/kedaluwarsa, sehingga tidak dipulihkan sebagai draft aktif.
+
+Pembersihan latar belakang saat tidak ada pengunjung menggunakan cron harian di vercel.json. Tambahkan CRON_SECRET acak minimal 32 karakter pada Environment Variables Vercel Production, kemudian redeploy. Contoh membuat nilai melalui terminal lokal:
+
+```cmd
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Jangan kirim nilai tersebut ke orang lain atau memasukkannya ke repository. Vercel mengirimkannya melalui Authorization: Bearer. Endpoint menolak akses tanpa secret yang cocok. Batas akses draft tetap 24 jam walaupun jadwal cron harian belum berjalan. Penghapusan fisik tanpa lalu lintas situs mengikuti waktu cron berikutnya; ini bukan timer database yang berjalan tepat pada detik ke-24 jam.
+
+Migrasi 006 menambahkan indeks pencarian draft kedaluwarsa. Build Production menerapkan migrasi otomatis. Pembersihan juga dapat dijalankan manual melalui npm run maintenance dengan .env.local yang benar. Rujukan konfigurasi cron: https://vercel.com/docs/schedules/cron-jobs/manage-cron-jobs dan https://vercel.com/docs/schedules/cron-jobs/usage-and-pricing.

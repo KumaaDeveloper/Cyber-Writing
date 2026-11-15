@@ -26,7 +26,7 @@ test("fresh installation creates tables, applies migrations once, and can bootst
     await migrateDatabase(client);
     await migrateDatabase(client);
     const m = await pg.query("SELECT name FROM schema_migrations");
-    assert.equal(m.rows.length, 5);
+    assert.equal(m.rows.length, 6);
     assert.equal(
       await bootstrapAdmin(client, "admin", "test-fixture-password-1234"),
       "created",

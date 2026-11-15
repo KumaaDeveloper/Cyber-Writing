@@ -62,6 +62,7 @@ import {
 import { ToolMenu } from "./tool-menu";
 import { reviewInputUnchanged } from "@/lib/review-runner";
 import { imageUploadError } from "@/lib/uploads";
+import { draftExpired } from "@/lib/draft-expiry";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
 
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
@@ -76,6 +77,7 @@ type FullDoc = DocumentData & {
   session_title: string;
   max_pages: number;
   status: string;
+  updated_at?: string;
   writable: boolean;
   read_only_reason?: string | null;
   writer_next_allowed_at?: string | null;
@@ -155,6 +157,16 @@ export default function Workspace({
     document.addEventListener("keydown", escape);
     return () => document.removeEventListener("keydown", escape);
   }, [drawer]);
+  async function discardExpiredDraft(message: string) {
+    blocked.current = true;
+    dirty.current = false;
+    current.current = null;
+    setDoc(null);
+    setError(message);
+    if (timer.current) clearTimeout(timer.current);
+    await Promise.all([del(localKey), del(localKey + "-unsynced")]).catch(() => {});
+    if (await get("cw-last-id").catch(() => null) === id) await del("cw-last-id").catch(() => {});
+  }
   async function backup(d: FullDoc, isDirty: boolean) {
     try {
       await set(localKey, { doc: d, dirty: isDirty, savedAt: Date.now() });
@@ -190,7 +202,7 @@ export default function Workspace({
     setSaved("Menyimpan...");
     try {
       const r = await api(endpoint, "PUT", documentBody(d));
-      const next = { ...current.current!, version: r.version };
+      const next = { ...current.current!, version: r.version, updated_at: r.updated_at || current.current?.updated_at };
       current.current = next;
       setDoc(next);
       if (gen === generation.current) {
@@ -207,6 +219,10 @@ export default function Workspace({
         navigator.onLine ? "Gagal menyimpan" : "Offline · salinan lokal",
       );
       setError(errorText(e));
+      if (e instanceof APIError && [404, 410].includes(e.status)) {
+        await discardExpiredDraft("Draft sudah dihapus atau telah melewati 24 jam tanpa perubahan.");
+        return false;
+      }
       if (e instanceof APIError && e.status === 409) {
         blocked.current = true;
         setConflict(true);
@@ -296,7 +312,16 @@ export default function Workspace({
         if (dirty.current && !blocked.current)
           timer.current = setTimeout(() => void save(), 1500);
       } catch (e) {
+        if (!active) return;
+        if (e instanceof APIError && [404, 410].includes(e.status)) {
+          await discardExpiredDraft("Draft sudah dihapus atau telah melewati 24 jam tanpa perubahan.");
+          return;
+        }
         const cached = await get<LocalBackup>(localKey).catch(() => null);
+        if (cached && draftExpired(cached.doc)) {
+          await discardExpiredDraft("Draft sudah melewati 24 jam tanpa perubahan.");
+          return;
+        }
         if (cached && active) {
           current.current = cached.doc;
           setDoc(cached.doc);
@@ -347,7 +372,21 @@ export default function Workspace({
       }
       void save();
     }, 15000);
+    const expiryCheck = setInterval(() => {
+      if (!navigator.onLine || current.current?.status !== "draft" || dirty.current || saving.current) return;
+      const checkedGeneration = generation.current;
+      void api<FullDoc>(endpoint).then((server) => {
+        if (current.current && current.current.version === server.version && !dirty.current) {
+          current.current = { ...current.current, updated_at: server.updated_at };
+          setDoc(current.current);
+        }
+      }).catch((error) => {
+        if (error instanceof APIError && [404, 410].includes(error.status) && checkedGeneration === generation.current && !saving.current)
+          void discardExpiredDraft("Draft sudah dihapus otomatis setelah 24 jam tanpa perubahan.");
+      });
+    }, 60000);
     return () => {
+      clearInterval(expiryCheck);
       window.removeEventListener("online", online);
       window.removeEventListener("offline", offline);
       window.removeEventListener("beforeunload", unload);
@@ -718,6 +757,7 @@ export default function Workspace({
           <span className="eyebrow">{doc.session_title}</span>
           <h3>{doc.title}</h3>
           <span className="badge">{statusLabel[doc.status]}</span>
+          {doc.status === "draft" && <small className="draft-expiry-note">Draft dihapus setelah 24 jam tanpa perubahan.</small>}
         </div>
         <div className="sidebar-section-label">
           HALAMAN{" "}

@@ -160,7 +160,16 @@ function WriterStart({ step }: { step: number }) {
         })
         .catch(() => {});
     }, 30000);
+    const draftTimer = setInterval(() => {
+      void api("drafts").then((data) => {
+        if (!active) return;
+        setResume(data.drafts[0] || null);
+        if (!data.drafts.length) setResumeOpen(false);
+        if (data.writer_access) setAccess(data.writer_access);
+      }).catch(() => {});
+    }, 60000);
     return () => {
+      clearInterval(draftTimer);
       clearInterval(timer);
       active = false;
     };
