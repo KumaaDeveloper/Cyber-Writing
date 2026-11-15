@@ -33,6 +33,21 @@ Tombol Pratinjau penulis, tautan Sumber referensi/Catatan pengurus pada sidebar,
 
 Toolbar teks sekarang menjadi komponen terpisah yang menerima instance editor aktif; tidak lagi memakai portal ke elemen yang hilang saat panel ditutup. Editor tetap terpasang saat panel Tools buka/tutup, sehingga isi, seleksi dan undo tidak hilang. Penambahan blok teks baru mengaktifkan editor blok tersebut. Unit test DOM memeriksa siklus tambah teks → ketik → buka Tools → format → buka/tutup berulang → undo → tambah teks lagi.
 
+## Revisi pengiriman dan Gemini
+
+- Setelah kirim, judul popup menjadi **Tulisan sudah dikirim**, tombolnya **Lihat tulisan**, dan Mulai ulang tidak ditampilkan. Reader menampilkan isi server, tanpa tombol Kirim atau tools pengeditan. Tulisan terkirim tidak otomatis dibuka untuk edit setelah jeda berakhir.
+- Jeda pengiriman default **24 jam berjalan sejak submit berhasil**. Admin mengubahnya di **Pengaturan → Jeda pengiriman**, dalam jam; nilai 0 menonaktifkan jeda. Pengaturan berlaku global, termasuk terhadap pengiriman sebelumnya.
+- Pembatasan diperiksa di backend untuk browser asal dan NIM yang diisi. Mengganti nama/email atau sesi tidak melewati jeda. NIM bukan identitas terverifikasi karena penulis tidak login; aplikasi tidak dapat memastikan identitas orang yang sengaja memakai NIM berbeda dari browser baru.
+- Jeda menghalangi draft baru, penyimpanan, upload, dan pengiriman. Tulisan lama tetap dapat dibaca. Setelah jeda berakhir, penulis dapat membuat tulisan baru pada sesi yang sama selama sesi masih dibuka. Membuka editor yang sudah terkunci dapat memerlukan refresh setelah pengaturan admin berubah.
+- Riwayat jeda disimpan terpisah dari tulisan sehingga menghapus tulisan tidak langsung membuka jeda. Draft aktif tidak digandakan oleh klik berulang. Admin tetap dapat meninjau dan mengoreksi saat penulis terkunci.
+- Migrasi `003_writer_cooldown.sql` membuat pengaturan dan riwayat jeda, mengisi riwayat dari pengiriman lama, dan menghapus constraint lama yang membatasi satu tulisan per sesi selamanya. Build Production menjalankannya otomatis jika DATABASE_URL tersedia.
+- Kartu sesi memakai tipografi seragam dan tanggal Mulai/Berakhir yang terpisah. Kolom Aksi pada daftar tulisan hanya berisi bintang dan hapus; klik judul tulisan untuk membukanya.
+- Gemini sekarang membedakan API key tidak valid, izin, billing, model tidak ditemukan, kuota, timeout, gangguan layanan, output kosong, dan JSON/nomor halaman tidak valid. Detail kredensial atau isi tulisan tidak dicetak ke log.
+- Retry otomatis SDK dibatasi satu attempt per request. Aplikasi mencoba ulang sekali hanya untuk error layanan 5xx, dengan jeda pendek dan batas total 95 detik. Error kredensial dan kuota tidak diulang otomatis. Riset Google Search dan pemformatan JSON tetap terpisah.
+- Respons AI divalidasi sebelum disimpan. Tidak ada sumber grounding berarti hasil ditandai Kurang Valid/belum terverifikasi, bukan Valid. Hasil versi konten yang sama tetap memakai cache.
+
+Panggilan Gemini asli membutuhkan API key dan project Google yang memiliki akses/kuota. Tes lokal memakai transport simulasi; koneksi Google AI Studio dan Neon milik pemilik belum diuji di lingkungan pembangunan ini.
+
 ## Mulai dari sini
 
 1. Ekstrak ZIP ini.
@@ -168,7 +183,7 @@ Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload p
 ## Batas dan keputusan implementasi
 
 - Aplikasi produksi memakai Neon/PostgreSQL. PGlite hanya dependency pengujian untuk menjalankan PostgreSQL secara lokal dalam tes, tidak menjadi fallback database produksi.
-- Satu draft/tulisan per browser per sesi. Identitas tanpa login bukan identitas terverifikasi. Tidak ada pengambilan draft hanya lewat NIM/email.
+- Satu draft aktif per browser per sesi. Tulisan baru pada sesi yang sama dapat dibuat setelah jeda pengiriman berakhir. Identitas tanpa login bukan identitas terverifikasi. Tidak ada pengambilan draft hanya lewat NIM/email.
 - Menghapus cookie atau data situs dapat menghilangkan akses penulis ke draft. Admin tetap dapat membukanya. Aplikasi tidak menyediakan pemulihan lintas perangkat atau email OTP.
 - Backup offline berlaku pada aplikasi yang sudah terbuka/termuat; aplikasi ini bukan PWA dengan jaminan cold-start offline.
 - Batas dokumen: 30 halaman maksimum sistem, 100 blok per halaman, 100 referensi, payload editor sekitar 1 MB. Admin dapat menentukan batas halaman lebih rendah. Upload maksimal 60 file per tulisan.
@@ -176,7 +191,7 @@ Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload p
 - AI bukan penentu kebenaran final. Pengurus tetap menilai sumber dan konteks. Bukti yang tidak cukup tidak dianggap otomatis salah.
 - Diagram memakai kode Mermaid; editor visual node/panah drag-and-drop tidak disertakan.
 - Pengurutan memakai tombol naik/turun, bukan drag-and-drop.
-- Carousel Instagram 4:5, export PNG/PDF, dan layout publikasi adalah fitur opsional pada brief dan **tidak disertakan**. Pratinjau dokumen lengkap tersedia per halaman, dengan gambar, diagram, tabel, dan sumber.
+- Carousel Instagram 4:5, export PNG/PDF, dan layout publikasi adalah fitur opsional pada brief dan **tidak disertakan**. Tulisan dibaca per halaman, dengan gambar, diagram, tabel, dan sumber.
 - Proyek ini disiapkan untuk deployment Vercel oleh pemilik akun. Belum ada deployment Vercel atau koneksi kredensial eksternal yang dilakukan dalam pembuatan paket ini.
 
 ## Struktur proyek

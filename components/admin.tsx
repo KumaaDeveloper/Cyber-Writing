@@ -462,10 +462,16 @@ function Sessions({ autoCreate = false }: { autoCreate?: boolean }) {
                 </div>
                 <h2>{s.title}</h2>
                 <p>{s.description}</p>
-                <span className="session-detail">
-                  <Clock size={14} />
-                  {date(s.start_at)} — {date(s.end_at)}
-                </span>
+                <dl className="session-dates">
+                  <div>
+                    <dt>Mulai</dt>
+                    <dd>{date(s.start_at)}</dd>
+                  </div>
+                  <div>
+                    <dt>Berakhir</dt>
+                    <dd>{date(s.end_at)}</dd>
+                  </div>
+                </dl>
                 <div className="session-themes">
                   {s.themes.map((t: Theme) => (
                     <span key={t.id}>{t.title}</span>
@@ -995,13 +1001,7 @@ function SubmissionList({
                           className={r.is_starred ? "gold" : ""}
                         />
                       </button>
-                      <Link
-                        className="icon-button"
-                        aria-label="Buka tulisan"
-                        href={"/admin/submissions/" + r.id}
-                      >
-                        <ArrowUpRight size={17} />
-                      </Link>
+
                       <button
                         className="icon-button"
                         aria-label="Hapus tulisan"
@@ -1078,12 +1078,19 @@ function AdminSettings() {
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [min, setMin] = useState(5),
-    [max, setMax] = useState(20);
+    [max, setMax] = useState(20),
+    [cooldownHours, setCooldownHours] = useState(24);
   const form = useForm<{ currentPassword: string; newPassword: string }>();
   useEffect(() => {
     api("admin/settings")
       .then((d) => {
         setData(d);
+        setCooldownHours(
+          Number(
+            d.settings.find((s: any) => s.key === "writer_cooldown_hours")
+              ?.value ?? 24,
+          ),
+        );
         const pattern = d.settings.find(
           (s: any) => s.key === "nim_pattern",
         )?.value;
@@ -1186,6 +1193,41 @@ function AdminSettings() {
               </label>
             </div>
             <Button>Simpan aturan</Button>
+          </form>
+        </section>
+        <section className="settings-card">
+          <h3>Jeda pengiriman</h3>
+          <p>
+            Penulis menunggu setelah mengirim sebelum bisa menulis lagi. Tulisan
+            terkirim tetap hanya dapat dibaca.
+          </p>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                await api("admin/settings", "PATCH", {
+                  cooldown_hours: cooldownHours,
+                });
+                setMessage("Jeda pengiriman diperbarui.");
+                setError("");
+              } catch (e) {
+                setError(errorText(e));
+              }
+            }}
+          >
+            <label>
+              Lama jeda (jam)
+              <input
+                type="number"
+                min="0"
+                max="8760"
+                required
+                value={cooldownHours}
+                onChange={(e) => setCooldownHours(Number(e.target.value))}
+              />
+              <small>Default 24 jam. Isi 0 untuk menonaktifkan jeda.</small>
+            </label>
+            <Button>Simpan jeda</Button>
           </form>
         </section>
         <section className="settings-card">

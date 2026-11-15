@@ -3854,3 +3854,25 @@ footer > span:last-child {
 .content-block .block-controls{border-bottom:0;margin-bottom:4px}
 @media(max-width:800px){.insert-tool-grid,.workspace-tools-panel .text-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.simple-form-layout{margin:28px auto 44px}.simple-session{padding:24px;max-width:100%}.simple-session h1{font-size:24px}.themes .theme-card{padding:16px;min-height:66px}.simple-progress{gap:26px}.workspace-tools-panel{padding:13px;max-height:55dvh}.insert-tool-grid,.workspace-tools-panel .text-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.workspace-tools-panel .text-toolbar>button{min-height:40px}.workspace-tools-panel .text-toolbar select{height:40px}.paper input.page-title{font-size:23px}}
+.session-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:18px;align-items:start}
+.session-card{padding:20px;border-radius:8px}
+.session-card h2{font-size:19px;font-weight:600;line-height:1.4;letter-spacing:-.02em}
+.session-card .card-heading{padding:0 0 14px}
+.session-card .badge{font-size:11px;padding:5px 9px}
+.session-card>p{font-size:13px;margin:10px 0}
+.session-dates{display:grid;gap:8px;margin:18px 0;font-size:12px;line-height:1.5}
+.session-dates>div{display:grid;grid-template-columns:60px minmax(0,1fr);gap:10px}
+.session-dates dt{color:#8f8f9c}.session-dates dd{margin:0;color:#c4c4ce;overflow-wrap:anywhere}
+.session-card .session-themes{gap:7px;margin:0 0 18px}
+.session-card .session-themes>span{font-size:11px;line-height:1.4;padding:5px 8px}
+.session-card .session-card-bottom{padding-top:14px;gap:10px}
+.session-card .session-card-bottom>span{font-size:12px}
+.session-card .session-card-bottom .btn{font-size:12px;min-height:36px;padding:8px 10px}
+.form-bottom.end{justify-content:flex-end}
+.writer-lock-note{font-size:12px!important;color:#c4b39a!important}
+.writer-lock-message{display:flex;flex-direction:column;gap:18px}
+.writer-lock-message h2{font-size:21px}
+.writer-lock-message>p{font-size:13px}
+.writer-lock-message>a{color:#a1a1aa;font-size:12px}
+.success-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+@media(max-width:600px){.session-grid{grid-template-columns:1fr}.session-card{padding:18px}.session-card h2{font-size:19px}.session-card .session-card-bottom .btn{min-height:42px}}

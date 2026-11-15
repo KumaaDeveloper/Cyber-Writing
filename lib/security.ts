@@ -19,6 +19,10 @@ const options = {
   sameSite: "lax" as const,
   path: "/",
 };
+export async function optionalOwner() {
+  const token = (await cookies()).get("cw_writer")?.value;
+  return token ? hash(token) : null;
+}
 export async function owner(create = false) {
   const jar = await cookies();
   let token = jar.get("cw_writer")?.value;

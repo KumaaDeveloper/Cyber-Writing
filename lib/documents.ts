@@ -1,4 +1,9 @@
 import { db, rows, sql, type Executor } from "./db";
+import {
+  writerAccess,
+  assertWriterAvailable,
+  recordSubmission,
+} from "./writers";
 import { fail } from "./security";
 import {
   type DocumentData,
@@ -12,7 +17,7 @@ export async function getDocument(
   e: Executor = db(),
 ): Promise<DocumentData & Record<string, any>> {
   const [s] = await rows(
-    sql`SELECT s.id,s.title,s.status,s.is_starred,s.content_version,s.submitted_at,s.updated_at,s.session_id,s.theme_id,w.name,w.nim,w.email,w.membership_status,w.department,t.title AS theme_title,t.instructions,ws.title AS session_title,ws.status AS session_status,ws.start_at,ws.end_at,ws.max_pages FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id WHERE s.id=${id}`,
+    sql`SELECT s.owner_hash,s.id,s.title,s.status,s.is_starred,s.content_version,s.submitted_at,s.updated_at,s.session_id,s.theme_id,w.name,w.nim,w.email,w.membership_status,w.department,t.title AS theme_title,t.instructions,ws.title AS session_title,ws.status AS session_status,ws.start_at,ws.end_at,ws.max_pages FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id WHERE s.id=${id}`,
     e,
   );
   if (!s) fail(404, "Tulisan tidak ditemukan.");
@@ -28,20 +33,30 @@ export async function getDocument(
     sql`SELECT id,page_id,note,created_at FROM admin_notes WHERE submission_id=${id} ORDER BY created_at DESC`,
     e,
   );
+  const access = await writerAccess(s.owner_hash, s.nim, e);
+  const { owner_hash, ...publicFields } = s;
+  const sessionAvailable = sessionOpen({
+    status: s.session_status,
+    start_at: s.start_at,
+    end_at: s.end_at,
+  });
   return {
-    ...s,
+    ...publicFields,
     title: s.title,
     version: s.content_version,
     pages,
     references: refs.map((r) => ({ ...r, accessed_at: r.accessed_at || "" })),
     notes,
-    writable:
-      canWrite(s.status) &&
-      sessionOpen({
-        status: s.session_status,
-        start_at: s.start_at,
-        end_at: s.end_at,
-      }),
+    writable: canWrite(s.status) && sessionAvailable && !access.locked,
+    writer_next_allowed_at: access.next_allowed_at,
+    writer_cooldown_hours: access.cooldown_hours,
+    read_only_reason: !canWrite(s.status)
+      ? "submitted"
+      : !sessionAvailable
+        ? "session_closed"
+        : access.locked
+          ? "cooldown"
+          : null,
   };
 }
 export async function authorizeDocument(
@@ -86,6 +101,13 @@ export async function lockDocument(
       403,
       "Tulisan sudah dikirim atau sesi telah berakhir. Salinan lokal tetap tersimpan.",
     );
+  if (ownerHash && !(allowSubmitted && s.status === "submitted")) {
+    const [writer] = await rows(
+      sql`SELECT nim FROM writers WHERE id=${s.writer_id}`,
+      e,
+    );
+    await assertWriterAvailable(ownerHash, writer.nim, e);
+  }
   return { s, session };
 }
 export async function writeContent(id: string, doc: DocumentData, e: Executor) {
@@ -141,11 +163,18 @@ export async function saveDocument(
       tx,
     );
     await writeContent(id, doc, tx);
-    if (submit)
+    if (submit) {
       await rows(
         sql`UPDATE submissions SET status='submitted',submitted_at=now() WHERE id=${id}`,
         tx,
       );
+      const [writer] = await rows(
+        sql`SELECT nim FROM writers WHERE id=${s.writer_id}`,
+        tx,
+      );
+      await recordSubmission(s.owner_hash, writer.nim, tx);
+    }
+
     return {
       version: doc.version + 1,
       status: submit ? "submitted" : s.status,

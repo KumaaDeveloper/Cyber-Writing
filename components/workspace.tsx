@@ -79,6 +79,8 @@ type FullDoc = DocumentData & {
   max_pages: number;
   status: string;
   writable: boolean;
+  read_only_reason?: string | null;
+  writer_next_allowed_at?: string | null;
   end_at: string;
   instructions: string;
   is_starred: boolean;
@@ -206,9 +208,40 @@ export default function Workspace({
         blocked.current = true;
         setConflict(true);
       }
-      if (e instanceof APIError && e.status === 403) {
+      if (e instanceof APIError && (e.status === 403 || e.status === 423)) {
         blocked.current = true;
-        setDoc((v) => (v ? { ...v, writable: false } : v));
+        let latest: FullDoc | null = null;
+        try {
+          latest = await api<FullDoc>(endpoint);
+        } catch {}
+        if (latest && ["submitted", "reviewed"].includes(latest.status)) {
+          if (current.current && dirty.current)
+            await set(localKey + "-unsynced", {
+              doc: current.current,
+              dirty: true,
+              savedAt: Date.now(),
+            }).catch(() => {});
+          current.current = latest;
+          setDoc(latest);
+          dirty.current = false;
+          setSaved("Terkirim");
+        } else {
+          const next = current.current
+            ? {
+                ...current.current,
+                writable: false,
+                read_only_reason:
+                  e.status === 423
+                    ? "cooldown"
+                    : latest?.read_only_reason || "session_closed",
+                writer_next_allowed_at: latest?.writer_next_allowed_at,
+              }
+            : null;
+          if (next) {
+            current.current = next;
+            setDoc(next);
+          }
+        }
       }
       return false;
     } finally {
@@ -224,13 +257,23 @@ export default function Workspace({
         if (!active) return;
         setReviews(server.reviews || []);
         let result = server;
-        if (cached?.dirty) {
-          if (
-            cached.doc.version === server.version &&
-            server.writable &&
-            !admin
-          ) {
-            result = { ...server, ...cached.doc, writable: server.writable };
+        if (!admin && ["submitted", "reviewed"].includes(server.status)) {
+          if (cached?.dirty)
+            await set(localKey + "-unsynced", cached).catch(() => {});
+          blocked.current = true;
+          dirty.current = false;
+          setSaved("Terkirim");
+        } else if (cached?.dirty) {
+          if (cached.doc.version === server.version && !admin) {
+            result = {
+              ...server,
+              ...cached.doc,
+              status: server.status,
+              writable: server.writable,
+              read_only_reason: server.read_only_reason,
+              writer_next_allowed_at: server.writer_next_allowed_at,
+            };
+            blocked.current = !server.writable;
             dirty.current = true;
             setSaved("Salinan lokal dipulihkan");
           } else if (cached.doc.version === server.version && admin) {
@@ -612,7 +655,7 @@ export default function Workspace({
               {edit ? "Mode baca" : "Edit tulisan"}
             </Button>
           ) : null}
-          {!admin && (
+          {!admin && doc.writable && (
             <Button
               disabled={!doc.writable || busy || conflict}
               onClick={() => setSubmitOpen(true)}
@@ -715,8 +758,10 @@ export default function Workspace({
             {!admin && !doc.writable && (
               <div className="warning-banner">
                 {doc.status === "submitted" || doc.status === "reviewed"
-                  ? "Tulisan sudah dikirim dan terkunci."
-                  : "Sesi telah berakhir. Tulisan hanya dapat dibaca."}
+                  ? "Tulisan sudah dikirim. Kamu dapat membacanya, tetapi tidak dapat mengedit."
+                  : doc.read_only_reason === "cooldown"
+                    ? `Penulisan dikunci sementara.${doc.writer_next_allowed_at ? " Kamu bisa menulis lagi pada " + date(doc.writer_next_allowed_at) + "." : ""}`
+                    : "Sesi telah berakhir. Tulisan hanya dapat dibaca."}
               </div>
             )}
             {admin && (

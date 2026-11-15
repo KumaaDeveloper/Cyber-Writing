@@ -16,6 +16,7 @@ let id: string,
   otherOwner = "test-other-owner";
 before(async () => {
   await pg.exec(await readFile("db/001_initial.sql", "utf8"));
+  await pg.exec(await readFile("db/003_writer_cooldown.sql", "utf8"));
   const s = await pg.query<{ id: string }>(
     "INSERT INTO writing_sessions(title,start_at,end_at,max_pages,status) VALUES('Test session',now()-interval '1 day',now()+interval '1 day',2,'open') RETURNING id",
   );
@@ -159,6 +160,8 @@ test("retrying the same submit is idempotent after successful commit", async () 
 });
 test("explicit revision reopens editable content while session remains open", async () => {
   await pg.query("UPDATE submissions SET status='revision' WHERE id=$1", [id]);
+  assert.equal((await getDocument(id,database)).writable,false);
+  await pg.query("UPDATE settings SET value='0' WHERE key='writer_cooldown_hours'");
   const d = await body();
   d.title = "Revisi final";
   await saveDocument(id, d, owner, undefined, false, database);

@@ -13,6 +13,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { get, set, del } from "idb-keyval";
+import type { WriterAccess } from "@/lib/writers";
 import { identitySchema, type Identity, type SessionData } from "@/lib/model";
 import {
   Brand,
@@ -59,9 +60,19 @@ export default function Application() {
             Terima kasih telah berkontribusi dalam CYWRITE. Tulisanmu akan
             melalui proses peninjauan oleh admin.
           </p>
-          <Button onClick={() => router.push("/")}>
-            Kembali ke beranda <ArrowRight size={16} />
-          </Button>
+          <div className="success-actions">
+            <Button
+              onClick={async () => {
+                const id = await get("cw-last-id");
+                router.push(id ? "/write/" + id + "?page=1" : "/");
+              }}
+            >
+              Lihat tulisan
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/")}>
+              Kembali ke beranda
+            </Button>
+          </div>
         </main>
         <Footer />
       </div>
@@ -78,6 +89,12 @@ function WriterStart({ step }: { step: number }) {
     [selected, setSelected] = useState(""),
     [busy, setBusy] = useState(false),
     [resume, setResume] = useState<any>(null),
+    [resumeOpen, setResumeOpen] = useState(false),
+    [access, setAccess] = useState<WriterAccess>({
+      cooldown_hours: 24,
+      locked: false,
+      next_allowed_at: null,
+    }),
     [confirm, setConfirm] = useState(false),
     [themeConfirm, setThemeConfirm] = useState(false),
     [nimPattern, setNimPattern] = useState("^[0-9]{5,20}$");
@@ -92,12 +109,25 @@ function WriterStart({ step }: { step: number }) {
     },
   });
   const membership = form.watch("membership_status");
+  const locked =
+    !!access.next_allowed_at &&
+    new Date(access.next_allowed_at).getTime() > Date.now();
+  const isSubmitted =
+    !!resume && ["submitted", "reviewed"].includes(resume.status);
+  async function openResume() {
+    if (!resume) return;
+    await set("cw-last-id", resume.id);
+    const page = (await get("cw-page-" + resume.id)) || 1;
+    router.push(`/write/${resume.id}?page=${page}`);
+  }
+
   useEffect(() => {
     let active = true;
     api("public")
       .then((d) => {
         if (active) {
           setSession(d.session);
+          if (d.writer_access) setAccess(d.writer_access);
           if (d.nim_pattern) setNimPattern(d.nim_pattern);
         }
       })
@@ -108,10 +138,27 @@ function WriterStart({ step }: { step: number }) {
     });
     api("drafts")
       .then((d) => {
-        if (active && d.drafts.length) setResume(d.drafts[0]);
+        if (active) {
+          if (d.writer_access) setAccess(d.writer_access);
+          if (d.drafts.length) {
+            setResume(d.drafts[0]);
+            setResumeOpen(true);
+          }
+        }
       })
       .catch(() => {});
+    const timer = setInterval(() => {
+      api("public")
+        .then((d) => {
+          if (active) {
+            setSession(d.session);
+            if (d.writer_access) setAccess(d.writer_access);
+          }
+        })
+        .catch(() => {});
+    }, 30000);
     return () => {
+      clearInterval(timer);
       active = false;
     };
   }, []);
@@ -157,9 +204,22 @@ function WriterStart({ step }: { step: number }) {
               <h1>{session.title}</h1>
               {session.description && <p>{session.description}</p>}
               <small>Ditutup {date(session.end_at)}</small>
-              <Button onClick={() => router.push("/identity")}>
+              {locked && (
+                <p className="writer-lock-note">
+                  Kamu bisa menulis lagi pada {date(access.next_allowed_at!)}.
+                </p>
+              )}
+              <Button
+                disabled={locked}
+                onClick={() => router.push("/identity")}
+              >
                 Mulai Menulis <ArrowRight size={16} />
               </Button>
+              {resume && (
+                <Button variant="secondary" onClick={() => setResumeOpen(true)}>
+                  {isSubmitted ? "Lihat tulisan terakhir" : "Buka draft"}
+                </Button>
+              )}
             </section>
           ) : (
             <h1 className="session-empty">Belum Ada Sesi Penulisan</h1>
@@ -187,6 +247,15 @@ function WriterStart({ step }: { step: number }) {
                   Kembali
                 </Button>
               </>
+            ) : locked ? (
+              <div className="writer-lock-message">
+                <h2>Penulisan dikunci sementara</h2>
+                <p>
+                  Kamu bisa menulis lagi pada {date(access.next_allowed_at!)}.
+                </p>
+                {resume && <Button onClick={openResume}>Lihat tulisan</Button>}
+                <Link href="/">Kembali</Link>
+              </div>
             ) : step === 1 ? (
               <form
                 onSubmit={form.handleSubmit(async (v) => {
@@ -340,12 +409,16 @@ function WriterStart({ step }: { step: number }) {
         </div>
       )}
       <Modal
-        open={!!resume && step === 0 && !!session}
-        onOpenChange={(v) => {
-          if (!v) setResume(null);
-        }}
-        title="Lanjutkan tulisan?"
-        description="Tulisan dari browser ini masih tersimpan."
+        open={resumeOpen && !!resume && step === 0 && !!session}
+        onOpenChange={setResumeOpen}
+        title={isSubmitted ? "Tulisan sudah dikirim" : "Lanjutkan tulisan?"}
+        description={
+          isSubmitted
+            ? "Tulisanmu tersimpan dan hanya dapat dibaca."
+            : locked
+              ? "Draft tersimpan. Pengeditan tersedia setelah jeda pengiriman berakhir."
+              : "Tulisan dari browser ini masih tersimpan."
+        }
       >
         <div className="resume-card">
           <FileText />
@@ -354,22 +427,15 @@ function WriterStart({ step }: { step: number }) {
             <p>{resume?.session_title}</p>
           </div>
         </div>
-        <div className="form-bottom">
-          <Button
-            variant="ghost"
-            disabled={!["draft", "revision"].includes(resume?.status)}
-            onClick={() => setConfirm(true)}
-          >
-            Mulai ulang
-          </Button>
-          <Button
-            onClick={async () => {
-              await set("cw-last-id", resume.id);
-              const page = (await get("cw-page-" + resume.id)) || 1;
-              router.push(`/write/${resume.id}?page=${page}`);
-            }}
-          >
-            Buka tulisan <ArrowRight size={16} />
+        <div className={"form-bottom " + (isSubmitted || locked ? "end" : "")}>
+          {!isSubmitted && !locked && (
+            <Button variant="ghost" onClick={() => setConfirm(true)}>
+              Mulai ulang
+            </Button>
+          )}
+          <Button onClick={openResume}>
+            {isSubmitted || locked ? "Lihat tulisan" : "Lanjutkan menulis"}{" "}
+            <ArrowRight size={16} />
           </Button>
         </div>
       </Modal>
@@ -393,6 +459,7 @@ function WriterStart({ step }: { step: number }) {
                 await api("drafts/" + resume.id, "DELETE");
                 await del("cw-draft-" + resume.id);
                 setResume(null);
+                setResumeOpen(false);
                 setConfirm(false);
                 router.push("/identity");
               } catch (e) {

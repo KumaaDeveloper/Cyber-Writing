@@ -1,4 +1,5 @@
 import { configurationError } from "@/lib/config-errors";
+import { writerAccess, createDraft } from "@/lib/writers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -10,6 +11,7 @@ import {
   AppError,
   fail,
   owner,
+  optionalOwner,
   admin,
   setAdminSession,
   logout,
@@ -60,6 +62,7 @@ async function handler(
       return json({
         configured: true,
         nim_pattern: setting?.value,
+        writer_access: await writerAccess(await optionalOwner()),
         session: s
           ? {
               ...s,
@@ -114,8 +117,9 @@ async function handler(
       const ownerHash = await owner(method === "POST" && !id);
       if (method === "GET" && !id) {
         return json({
+          writer_access: await writerAccess(ownerHash),
           drafts: await rows(
-            sql`SELECT s.id,s.title,s.status,s.updated_at,ws.title AS session_title FROM submissions s JOIN writing_sessions ws ON ws.id=s.session_id WHERE owner_hash=${ownerHash} ORDER BY s.updated_at DESC LIMIT 30`,
+            sql`SELECT s.id,s.title,s.status,s.submitted_at,s.updated_at,ws.title AS session_title FROM submissions s JOIN writing_sessions ws ON ws.id=s.session_id WHERE owner_hash=${ownerHash} ORDER BY s.updated_at DESC LIMIT 30`,
           ),
         });
       }
@@ -129,47 +133,12 @@ async function handler(
             theme_id: z.uuid(),
           })
           .parse(await readJson(req));
-        const result = await db().transaction(async (tx) => {
-          const [s] = await rows(
-            sql`SELECT * FROM writing_sessions WHERE id=${b.session_id} FOR SHARE`,
-            tx,
-          );
-          if (!s || !sessionOpen(s as any)) fail(403, "Sesi tidak tersedia.");
-          const [theme] = await rows(
-            sql`SELECT id FROM session_themes WHERE id=${b.theme_id} AND session_id=${s.id} AND available`,
-            tx,
-          );
-          if (!theme) fail(400, "Tema tidak tersedia.");
-          await rows(
-            sql`SELECT pg_advisory_xact_lock(hashtext(${ownerHash}))`,
-            tx,
-          );
-          const [existing] = await rows(
-            sql`SELECT id FROM submissions WHERE owner_hash=${ownerHash} AND session_id=${s.id}`,
-            tx,
-          );
-          if (existing) return existing;
-          const [pattern] = await rows(
-            sql`SELECT value FROM settings WHERE key='nim_pattern'`,
-            tx,
-          );
-          if (pattern && !new RegExp(pattern.value).test(b.identity.nim))
-            fail(400, "NIM tidak sesuai aturan sesi.");
-          const w = b.identity;
-          const [writer] = await rows(
-            sql`INSERT INTO writers(name,nim,email,membership_status,department) VALUES(${w.name},${w.nim},${w.email},${w.membership_status},${w.membership_status === "pengurus" ? w.department : null}) RETURNING id`,
-            tx,
-          );
-          const [draft] = await rows(
-            sql`INSERT INTO submissions(session_id,theme_id,writer_id,owner_hash) VALUES(${s.id},${theme.id},${writer.id},${ownerHash}) RETURNING id`,
-            tx,
-          );
-          await rows(
-            sql`INSERT INTO submission_pages(id,submission_id,page_number,title) VALUES(${randomUUID()},${draft.id},1,'Halaman pertama')`,
-            tx,
-          );
-          return draft;
-        });
+        const result = await createDraft(
+          b.identity,
+          b.session_id,
+          b.theme_id,
+          ownerHash,
+        );
         return json(result, 201);
       }
       uuid(id);
@@ -503,7 +472,7 @@ async function handler(
           );
           if (cached && !b.force) return json(cached);
           await limit("ai:" + a.id, 20, 3600);
-          await limit("ai-doc:" + target, 1, 120);
+          await limit("ai-doc:" + target, 2, 60);
           const result = await reviewDocument(doc);
           const [r] = await rows(
             sql`INSERT INTO ai_reviews(submission_id,content_version,status,summary,findings_json,sources_json,search_html,model_name) VALUES(${target},${doc.version},${result.status},${result.summary},${JSON.stringify(result.findings)}::jsonb,${JSON.stringify(result.sources)}::jsonb,${result.search_html},${result.model}) RETURNING *`,
@@ -574,14 +543,32 @@ async function handler(
           // Constrain configurable NIM rules to numeric length bounds; no arbitrary regex/ReDoS.
           const b = z
             .object({
-              min: z.number().int().min(5).max(20),
-              max: z.number().int().min(5).max(20),
+              min: z.number().int().min(5).max(20).optional(),
+              max: z.number().int().min(5).max(20).optional(),
+              cooldown_hours: z.number().int().min(0).max(8760).optional(),
             })
-            .refine((v) => v.max >= v.min)
+            .refine(
+              (v) =>
+                (v.min === undefined) === (v.max === undefined) &&
+                (v.min === undefined || v.max! >= v.min) &&
+                (v.min !== undefined || v.cooldown_hours !== undefined),
+              "Pengaturan tidak valid.",
+            )
             .parse(await readJson(req));
-          await rows(
-            sql`UPDATE settings SET value=${`^[0-9]{${b.min},${b.max}}$`} WHERE key='nim_pattern'`,
-          );
+          if (b.min !== undefined)
+            await rows(
+              sql`UPDATE settings SET value=${`^[0-9]{${b.min},${b.max}}$`} WHERE key='nim_pattern'`,
+            );
+          if (b.cooldown_hours !== undefined) {
+            await rows(
+              sql`INSERT INTO settings(key,value) VALUES('writer_cooldown_hours',${String(b.cooldown_hours)}) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+            );
+            await audit(
+              a.id,
+              "settings.writer_cooldown",
+              "writer_cooldown_hours",
+            );
+          }
           return json({ ok: true });
         }
       }
