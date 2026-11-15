@@ -1,4 +1,5 @@
 "use client";
+import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -61,6 +62,10 @@ import {
   downloadJson,
 } from "./ui";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
+const TextTools = dynamic(
+  () => import("./rich-editor").then((m) => m.TextTools),
+  { ssr: false },
+);
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
 const blankRich = { type: "doc", content: [{ type: "paragraph" }] };
 type FullDoc = DocumentData & {
@@ -92,11 +97,9 @@ function documentBody(d: FullDoc): DocumentData {
 export default function Workspace({
   id,
   admin = false,
-  preview = false,
 }: {
   id: string;
   admin?: boolean;
-  preview?: boolean;
 }) {
   const router = useRouter(),
     query = useSearchParams();
@@ -109,7 +112,7 @@ export default function Workspace({
     [insert, setInsert] = useState(""),
     [toolsOpen, setToolsOpen] = useState(false),
     [activeBlockId, setActiveBlockId] = useState(""),
-    [formatTarget, setFormatTarget] = useState<HTMLDivElement | null>(null),
+    [activeEditor, setActiveEditor] = useState<Editor | null>(null),
     [submitOpen, setSubmitOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [confirmDelete, setConfirmDelete] = useState<{
@@ -148,7 +151,7 @@ export default function Workspace({
   )
     ? activeBlockId
     : page?.blocks.find((b) => "content" in b)?.id;
-  const readOnly = preview || (!admin && !doc?.writable) || (admin && !edit);
+  const readOnly = (!admin && !doc?.writable) || (admin && !edit);
   readOnlyRef.current = readOnly;
   const localKey = "cw-" + (admin ? "admin-" : "") + "draft-" + id;
   async function backup(d: FullDoc, isDirty: boolean) {
@@ -318,7 +321,7 @@ export default function Workspace({
     void save();
     void set("cw-page-" + id, next + 1);
     router.replace(
-      `${admin ? "/admin/submissions/" : preview ? "/preview/" : "/write/"}${id}?page=${next + 1}`,
+      `${admin ? "/admin/submissions/" : "/write/"}${id}?page=${next + 1}`,
       { scroll: false },
     );
     setDrawer(false);
@@ -344,6 +347,8 @@ export default function Workspace({
     }
     let block: Block;
     const bid = crypto.randomUUID();
+    if (["text", "callout", "warning", "table"].includes(type))
+      setActiveBlockId(bid);
     if (type === "diagram")
       block = {
         id: bid,
@@ -579,7 +584,7 @@ export default function Workspace({
           <Brand />
           <span className="workspace-divider" />
           <span className="workspace-label">
-            {preview ? "PRATINJAU" : admin ? "ADMIN EDITOR" : "WORKSPACE"}
+            {admin ? "ADMIN EDITOR" : "WORKSPACE"}
           </span>
         </div>
         <div className="workspace-actions">
@@ -606,28 +611,7 @@ export default function Workspace({
             >
               {edit ? "Mode baca" : "Edit tulisan"}
             </Button>
-          ) : !preview ? (
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                if (dirty.current && !(await save())) {
-                  setError("Tunggu hingga tersimpan sebelum pratinjau.");
-                  return;
-                }
-                router.push(`/preview/${id}?page=${pageIndex + 1}`);
-              }}
-            >
-              <Eye size={15} />
-              <span>Pratinjau</span>
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              onClick={() => router.push(`/write/${id}?page=${pageIndex + 1}`)}
-            >
-              Kembali
-            </Button>
-          )}
+          ) : null}
           {!admin && (
             <Button
               disabled={!doc.writable || busy || conflict}
@@ -708,25 +692,14 @@ export default function Workspace({
           <span className="eyebrow">TEMA TERPILIH</span>
           <strong>{doc.theme_title}</strong>
           {doc.instructions && <p>{doc.instructions}</p>}
-          <button onClick={() => setPanel("references")}>
-            <LinkIcon size={14} /> Sumber referensi{" "}
-            <span>{doc.references.length}</span>
-          </button>
-          <button onClick={() => setPanel("notes")}>
-            <Info size={14} /> Catatan pengurus <span>{doc.notes.length}</span>
-          </button>
         </div>
       </aside>
       <main className="document-area">
         <div className="document-topbar">
           <div>
-            <span className="red-dot" />{" "}
-            {preview ? "PRATINJAU TULISAN" : "DOKUMEN"}{" "}
-            <ChevronRight size={12} /> Halaman {pageIndex + 1}
+            <span className="red-dot" /> DOKUMEN <ChevronRight size={12} />{" "}
+            Halaman {pageIndex + 1}
           </div>
-          <span>
-            {doc.pages.length} halaman · {doc.references.length} sumber
-          </span>
         </div>
         <div className="document-scroll">
           <div className="document-wrap">
@@ -900,10 +873,7 @@ export default function Workspace({
                 <div className="tool-group-heading">
                   <strong>Format teks</strong>
                 </div>
-                {!formatBlockId && (
-                  <p className="muted">Tambahkan atau pilih blok teks.</p>
-                )}
-                <div ref={setFormatTarget} />
+                <TextTools editor={activeEditor} />
               </section>
             )}
 
@@ -1018,10 +988,13 @@ export default function Workspace({
                   {"content" in b && (
                     <RichEditor
                       content={b.content}
-                      toolbarTarget={
-                        b.id === formatBlockId ? formatTarget : null
-                      }
-                      onActivate={() => setActiveBlockId(b.id)}
+                      onReady={(editor) => {
+                        if (b.id === formatBlockId) setActiveEditor(editor);
+                      }}
+                      onActivate={(editor) => {
+                        setActiveBlockId(b.id);
+                        setActiveEditor(editor);
+                      }}
                       readOnly={readOnly}
                       onChange={(v) => blockChange(b.id, { ...b, content: v })}
                     />
@@ -1209,7 +1182,7 @@ export default function Workspace({
                 </p>
               )}
               <div className="paper-footer">
-                <span>KSM CYBER WRITING</span>
+                <span>CYWRITE</span>
                 <span>{String(pageIndex + 1).padStart(2, "0")}</span>
               </div>
             </article>

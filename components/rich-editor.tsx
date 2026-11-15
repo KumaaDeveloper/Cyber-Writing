@@ -1,7 +1,11 @@
 "use client";
-import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { useEditor, EditorContent, type JSONContent } from "@tiptap/react";
+import {
+  useEditor,
+  EditorContent,
+  type JSONContent,
+  type Editor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
 import TextAlign from "@tiptap/extension-text-align";
@@ -33,22 +37,24 @@ export default function RichEditor({
   content,
   onChange,
   readOnly = false,
-  toolbarTarget,
   onActivate,
+  onReady,
 }: {
   content: unknown;
   onChange: (v: JSONContent) => void;
   readOnly?: boolean;
-  toolbarTarget?: HTMLElement | null;
-  onActivate?: () => void;
+  onActivate?: (editor: Editor) => void;
+  onReady?: (editor: Editor) => void;
 }) {
   const change = useRef(onChange);
   change.current = onChange;
-  const [, render] = useState(0);
   const activate = useRef(onActivate);
   activate.current = onActivate;
+  const ready = useRef(onReady);
+  ready.current = onReady;
   const editor = useEditor({
     immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
@@ -69,18 +75,51 @@ export default function RichEditor({
     content: content as JSONContent,
     editable: !readOnly,
     onUpdate: ({ editor }) => change.current(editor.getJSON()),
-    onFocus: () => activate.current?.(),
-    onSelectionUpdate: () => render((n) => n + 1),
-    onTransaction: () => render((n) => n + 1),
+    onFocus: ({ editor }) => activate.current?.(editor),
   });
   useEffect(() => {
-    editor?.setEditable(!readOnly);
-  }, [readOnly, editor]);
+    if (editor) ready.current?.(editor);
+  }, [editor]);
+  useEffect(() => {
+    editor?.setEditable(!readOnly, false);
+  }, [editor, readOnly]);
   useEffect(() => {
     if (editor && JSON.stringify(editor.getJSON()) !== JSON.stringify(content))
       editor.commands.setContent(content as JSONContent, { emitUpdate: false });
   }, [content, editor]);
   if (!editor) return <div className="skeleton editor-skeleton" />;
+  return (
+    <div
+      className={"rich-editor " + (readOnly ? "read-only" : "")}
+      onClick={(e) => {
+        if (readOnly) {
+          const a = (e.target as HTMLElement).closest("a");
+          if (a && safeUrl(a.href)) {
+            e.preventDefault();
+            window.open(a.href, "_blank", "noopener,noreferrer");
+          }
+        }
+      }}
+    >
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
+export function TextTools({ editor }: { editor: Editor | null }) {
+  const [, render] = useState(0);
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const refresh = () => render((v) => v + 1);
+    editor.on("transaction", refresh);
+    editor.on("destroy", refresh);
+    return () => {
+      editor.off("transaction", refresh);
+      editor.off("destroy", refresh);
+    };
+  }, [editor]);
+  if (!editor || editor.isDestroyed)
+    return <p className="muted">Pilih blok teks untuk mengatur format.</p>;
+  const readOnly = !editor.isEditable;
   const cmd = editor.chain().focus();
   const tool = (
     title: string,
@@ -263,26 +302,5 @@ export default function RichEditor({
       )}
     </>
   );
-  return (
-    <div
-      className={"rich-editor " + (readOnly ? "read-only" : "")}
-      onClick={(e) => {
-        if (readOnly) {
-          const a = (e.target as HTMLElement).closest("a");
-          if (a && safeUrl(a.href)) {
-            e.preventDefault();
-            window.open(a.href, "_blank", "noopener,noreferrer");
-          }
-        }
-      }}
-    >
-      {!readOnly &&
-        (toolbarTarget
-          ? createPortal(toolContents, toolbarTarget)
-          : toolbarTarget === undefined
-            ? toolContents
-            : null)}
-      <EditorContent editor={editor} />
-    </div>
-  );
+  return toolContents;
 }

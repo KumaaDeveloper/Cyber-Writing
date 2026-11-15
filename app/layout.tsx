@@ -5,7 +5,7 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "Cyber Writing — KSM Cyber Security",
+  title: "CYWRITE — KSM Cyber Security",
   description:
     "Ruang menulis, berbagi wawasan, dan membangun kesadaran keamanan digital. KSM Cyber Security UPN Veteran Jakarta.",
   robots: { index: false, follow: false },

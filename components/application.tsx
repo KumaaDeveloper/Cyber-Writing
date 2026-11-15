@@ -38,12 +38,7 @@ export default function Application() {
     router = useRouter();
   if (path.startsWith("/admin")) return <Admin />;
   if (path.startsWith("/write/") || path.startsWith("/preview/"))
-    return (
-      <Workspace
-        id={path.split("/")[2]}
-        preview={path.startsWith("/preview/")}
-      />
-    );
+    return <Workspace id={path.split("/")[2]} />;
   if (path === "/success")
     return (
       <div className="public-page">
@@ -61,8 +56,8 @@ export default function Application() {
             dikirim!
           </h1>
           <p>
-            Terima kasih telah berkontribusi dalam KSM Cyber Writing. Tulisanmu
-            akan melalui proses peninjauan oleh admin.
+            Terima kasih telah berkontribusi dalam CYWRITE. Tulisanmu akan
+            melalui proses peninjauan oleh admin.
           </p>
           <Button onClick={() => router.push("/")}>
             Kembali ke beranda <ArrowRight size={16} />

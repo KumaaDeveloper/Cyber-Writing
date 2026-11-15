@@ -10,7 +10,7 @@ Paket dibuat pada 14 November 2026. Berkas ini membedakan pemeriksaan yang dilak
 - Migrasi SQL dijalankan dalam PostgreSQL lokal berbasis PGlite pada tes; bukan koneksi ke Neon.
 - Pratinjau beranda dan halaman login admin dilihat di browser desktop.
 - Audit dependency produksi menggunakan `npm audit --omit=dev`: 0 vulnerability terlapor pada saat pemeriksaan.
-- Hasil terakhir: 26 tes otomatis lulus; build dan typecheck berhasil.
+- Hasil terakhir: 27 tes otomatis lulus; build dan typecheck berhasil.
 
 ## Kasus pengujian otomatis
 
@@ -74,7 +74,7 @@ Kredensial dan proses deployment nyata harus diselesaikan pemilik sebelum aplika
 - Error database dibedakan secara aman, termasuk driver error yang dibungkus Drizzle. Connection string dan pesan SQL mentah tidak dikirim ke browser/log.
 - Login pada deployment Neon/Vercel pemilik tetap memerlukan kredensial dan verifikasi di layanan nyata.
 
-Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 26 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.
+Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 27 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.
 
 ## Penyederhanaan dashboard
 
@@ -85,3 +85,7 @@ Menu Seluruh Tulisan dihapus; daftar tulisan ditempatkan pada tiap sesi. Teks pr
 Tes migrasi tambahan memeriksa perpindahan schema lama dengan relasi tulisan tetap utuh, penyimpanan sembilan tema, pengurutan ulang menggunakan upsert yang sama seperti API, penghapusan tema di tengah, dan penolakan indeks negatif. Form dan payload server tidak lagi membatasi tiga tema.
 
 Pemeriksaan visual perubahan terakhir pada browser belum dilakukan di sesi ini. Verifikasi interaksi Tools, seleksi teks, tabel, dan layout mobile pada deployment pemilik sebelum digunakan luas.
+
+## Revisi CYWRITE dan regresi Tools
+
+Unit test DOM (jsdom, bukan browser nyata) berhasil menguji penambahan dua blok teks, mengetik konten, membuka Tools setelah penambahan, toggle Tools tiga kali, format tebal, serta undo. Toolbar kini menerima editor aktif secara langsung, tanpa portal DOM. Pratinjau penulis dan elemen sidebar/ringkasan atas yang diminta telah dihapus; nama tampilan menjadi CYWRITE. Pemeriksaan visual pada browser produksi tetap belum dilakukan pada sesi ini.

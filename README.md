@@ -1,6 +1,6 @@
-# KSM Cyber Writing
+# CYWRITE
 
-Aplikasi penulisan materi keamanan siber untuk KSM Cyber Security FIK UPN “Veteran” Jakarta. Dibangun dengan Next.js App Router dan TypeScript, menggunakan logo asli yang dilampirkan. Palet merah–hitam mengacu pada referensi Cyber LMS.
+CYWRITE adalah aplikasi penulisan materi keamanan siber untuk KSM Cyber Security FIK UPN “Veteran” Jakarta. Dibangun dengan Next.js App Router dan TypeScript, menggunakan logo asli yang dilampirkan. Palet merah–hitam mengacu pada referensi Cyber LMS.
 
 ## Revisi dashboard dan password admin
 
@@ -20,10 +20,18 @@ Kode reset yang sama hanya dipakai sekali: build selanjutnya tidak mengubah pass
 
 - Pilihan tema dipusatkan pada satu kolom, tanpa nomor dekoratif. Teks dan indikator pilihan disejajarkan secara vertikal; deskripsi kosong tidak menyisakan ruang tambahan.
 - Informasi sesi aktif di beranda tampil dalam box dengan judul, tenggat, dan tombol Mulai Menulis. Saat tidak ada sesi, tetap hanya muncul pesan Belum Ada Sesi Penulisan.
-- Editor memiliki satu tombol **Tools**. Panelnya berisi tambah teks/gambar/galeri/tabel/diagram/referensi serta format teks untuk blok yang sedang dipilih. Toolbar panjang tidak lagi muncul pada setiap blok. Menutup panel tidak membuat ulang editor atau menghapus riwayat undo.
+- Editor memiliki satu tombol **Tools**. Panelnya berisi tambah teks/gambar/galeri/tabel/diagram/referensi serta format teks untuk blok yang sedang dipilih. Toolbar panjang tidak lagi muncul pada setiap blok. Menutup panel tidak membuat ulang editor atau menghapus riwayat undo. Toolbar dirender oleh panel, terpisah dari DOM editor.
 - Admin mulai dari satu tema dan dapat menambah sebanyak yang dibutuhkan. Tidak ada batas hitungan tiga tema pada form atau server; minimal satu tema tetap diperlukan. Batas ukuran request total tetap berlaku.
 - Migrasi `002_unlimited_themes.sql` menghapus batas indeks 0–2 serta memungkinkan perubahan urutan tema dalam transaksi. Migrasi mempertahankan ID dan relasi tema pada tulisan lama. Tema yang sudah dipakai tulisan tetap tidak dapat dihapus; admin dapat menonaktifkannya.
 - Deploy melalui `npm run build` menjalankan migrasi baru secara otomatis pada Production yang memiliki DATABASE_URL. Alternatif manual: `npm run db:migrate`.
+
+## Revisi CYWRITE
+
+Nama tampilan website, judul tab, dan label dokumen menjadi **CYWRITE**. Logo organisasi tetap dipakai. Nama repository serta ZIP distribusi dipertahankan agar alur update yang sudah digunakan tidak berubah.
+
+Tombol Pratinjau penulis, tautan Sumber referensi/Catatan pengurus pada sidebar, serta penghitung “halaman · sumber” pada bar atas dihapus. Data sumber/catatan yang sudah tersimpan tidak dihapus dari database. Ringkasan kirim tulisan tetap tersedia.
+
+Toolbar teks sekarang menjadi komponen terpisah yang menerima instance editor aktif; tidak lagi memakai portal ke elemen yang hilang saat panel ditutup. Editor tetap terpasang saat panel Tools buka/tutup, sehingga isi, seleksi dan undo tidak hilang. Penambahan blok teks baru mengaktifkan editor blok tersebut. Unit test DOM memeriksa siklus tambah teks → ketik → buka Tools → format → buka/tutup berulang → undo → tambah teks lagi.
 
 ## Mulai dari sini
 
@@ -114,7 +122,7 @@ Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload p
 
 - Beranda minimal: tanpa sesi hanya menampilkan “Belum Ada Sesi Penulisan”. Saat sesi aktif, tampil nama sesi, deskripsi jika ada, tenggat, dan tombol Mulai Menulis.
 - Form identitas dan tema memakai satu kolom dengan penanda tahap ringkas; tanpa hero, ilustrasi, atau slogan.
-- Identitas, tema, editor, pratinjau, dan konfirmasi pengiriman.
+- Identitas, tema, editor, dan konfirmasi pengiriman.
 - Nama, NIM sebagai teks, email, keanggotaan, serta departemen kondisional BPH/Technical/Social.
 - Aturan panjang NIM numerik dapat diubah admin, 5–20 digit.
 - Satu tema per tulisan; jumlah tema per sesi ditentukan admin tanpa batas tiga tema.
