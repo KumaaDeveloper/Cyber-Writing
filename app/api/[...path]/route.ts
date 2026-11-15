@@ -1,4 +1,5 @@
 import { configurationError } from "@/lib/config-errors";
+import { checkGeminiConnection } from "@/lib/gemini-transport";
 import { writerAccess, createDraft } from "@/lib/writers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -493,6 +494,11 @@ async function handler(
         }
       }
       if (resource === "settings") {
+        if (method === "POST" && target === "gemini-check") {
+          await limit("gemini-check:" + a.id, 6, 600);
+          return json(await checkGeminiConnection());
+        }
+
         if (method === "GET")
           return json({
             username: a.username,

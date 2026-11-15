@@ -142,7 +142,10 @@ function WriterStart({ step }: { step: number }) {
           if (d.writer_access) setAccess(d.writer_access);
           if (d.drafts.length) {
             setResume(d.drafts[0]);
-            setResumeOpen(true);
+            setResumeOpen(
+              ["draft", "revision"].includes(d.drafts[0].status) &&
+                !d.writer_access?.locked,
+            );
           }
         }
       })
@@ -216,7 +219,10 @@ function WriterStart({ step }: { step: number }) {
                 Mulai Menulis <ArrowRight size={16} />
               </Button>
               {resume && (
-                <Button variant="secondary" onClick={() => setResumeOpen(true)}>
+                <Button
+                  variant="secondary"
+                  onClick={isSubmitted ? openResume : () => setResumeOpen(true)}
+                >
                   {isSubmitted ? "Lihat tulisan terakhir" : "Buka draft"}
                 </Button>
               )}

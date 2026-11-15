@@ -3876,3 +3876,25 @@ footer > span:last-child {
 .writer-lock-message>a{color:#a1a1aa;font-size:12px}
 .success-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 @media(max-width:600px){.session-grid{grid-template-columns:1fr}.session-card{padding:18px}.session-card h2{font-size:19px}.session-card .session-card-bottom .btn{min-height:42px}}
+/* Editable text has a thin, visible boundary; reader content stays plain. */
+.rich-editor:not(.read-only) .tiptap{border:1px solid #3b3b45;border-radius:6px;background:#17171c;padding:14px 16px;min-height:130px;transition:border-color .15s;outline:none}
+.rich-editor:not(.read-only) .tiptap:focus{border-color:#777782}
+.rich-editor.read-only .tiptap{border:0;background:transparent;padding:0}
+.gemini-test-result{font-size:12px;margin-top:16px;overflow-wrap:anywhere}
+@media(min-width:1024px){
+ .document-wrap{max-width:1040px;padding:30px 40px 48px}
+ .paper{padding:30px 34px}
+ .document-title-row{align-items:center;margin-bottom:24px}
+ .document-title-row input.document-title{font-size:23px}
+ .paper input.page-title{font-size:29px}
+ .tiptap{font-size:15px;line-height:1.85}
+ .tiptap p{margin:9px 0}
+ .rich-editor:not(.read-only) .tiptap{min-height:155px;padding:16px 19px}
+ .tiptap h1{font-size:28px;line-height:1.35}
+ .tiptap h2{font-size:23px;line-height:1.4}
+ .tiptap h3{font-size:19px;line-height:1.45}
+ .content-block{margin:22px 0}
+ .block-controls>span,.paper-eyebrow{font-size:10px;letter-spacing:.08em}
+ .page-list>button>span:nth-child(2){font-size:12px}
+ .page-list small{font-size:10px}
+}

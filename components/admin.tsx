@@ -1079,7 +1079,9 @@ function AdminSettings() {
     [message, setMessage] = useState(""),
     [min, setMin] = useState(5),
     [max, setMax] = useState(20),
-    [cooldownHours, setCooldownHours] = useState(24);
+    [cooldownHours, setCooldownHours] = useState(24),
+    [testingGemini, setTestingGemini] = useState(false),
+    [geminiResult, setGeminiResult] = useState("");
   const form = useForm<{ currentPassword: string; newPassword: string }>();
   useEffect(() => {
     api("admin/settings")
@@ -1254,6 +1256,34 @@ function AdminSettings() {
               </span>
             </div>
           ))}
+        </section>
+        <section className="settings-card">
+          <h3>Uji koneksi Gemini</h3>
+          <p>
+            Memeriksa API key dan ketersediaan model tanpa mengirim tulisan.
+          </p>
+          <Button
+            disabled={testingGemini}
+            onClick={async () => {
+              setTestingGemini(true);
+              setGeminiResult("");
+              try {
+                const r = await api("admin/settings/gemini-check", "POST", {});
+                setGeminiResult(r.message);
+              } catch (e) {
+                setGeminiResult(errorText(e));
+              } finally {
+                setTestingGemini(false);
+              }
+            }}
+          >
+            {testingGemini ? "Memeriksa..." : "Uji koneksi Gemini"}
+          </Button>
+          {geminiResult && (
+            <p className="gemini-test-result" role="status">
+              {geminiResult}
+            </p>
+          )}
         </section>
         <section className="settings-card">
           <h3>

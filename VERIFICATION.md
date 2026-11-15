@@ -10,7 +10,7 @@ Paket dibuat pada 14 November 2026. Berkas ini membedakan pemeriksaan yang dilak
 - Migrasi SQL dijalankan dalam PostgreSQL lokal berbasis PGlite pada tes; bukan koneksi ke Neon.
 - Pratinjau beranda dan halaman login admin dilihat di browser desktop.
 - Audit dependency produksi menggunakan `npm audit --omit=dev`: 0 vulnerability terlapor pada saat pemeriksaan.
-- Hasil terakhir: 36 tes otomatis lulus; build dan typecheck berhasil.
+- Hasil terakhir: 41 tes otomatis lulus; build dan typecheck berhasil.
 
 ## Kasus pengujian otomatis
 
@@ -74,7 +74,7 @@ Kredensial dan proses deployment nyata harus diselesaikan pemilik sebelum aplika
 - Error database dibedakan secara aman, termasuk driver error yang dibungkus Drizzle. Connection string dan pesan SQL mentah tidak dikirim ke browser/log.
 - Login pada deployment Neon/Vercel pemilik tetap memerlukan kredensial dan verifikasi di layanan nyata.
 
-Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 36 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.
+Pemeriksaan visual login revisi terakhir di browser belum berhasil: sesi browser menolak akses tab lama. Validasi build/TypeScript dan 41 tes otomatis berhasil; login Neon/Vercel nyata belum diverifikasi.
 
 ## Penyederhanaan dashboard
 
@@ -93,3 +93,7 @@ Unit test DOM (jsdom, bukan browser nyata) berhasil menguji penambahan dua blok 
 ## Jeda kirim, reader dan Gemini
 
 Sembilan tes tambahan memeriksa batas 24 jam, jeda 0, pembuatan draft idempoten, pembatasan browser/NIM, draft baru setelah jeda dengan artikel lama tetap read-only, perubahan pengaturan admin, dan riwayat lock setelah penghapusan. Tes transport Gemini memeriksa privasi identitas, grounding/JSON, batas retry, error kredensial/kuota/model/timeout, output tidak valid, dan hasil tanpa sumber. Pengiriman dan AI layanan nyata tetap perlu diuji setelah deployment dengan kredensial pemilik.
+
+## Transport Gemini terbaru
+
+Lima tes tambahan memeriksa format REST Google Search/JSON, API key hanya di header, pengabaian part thought, pemetaan error bersarang/JSON/DNS/TLS, probe metadata tanpa artikel, retry setelah HTTP 503, serta status HTTP yang tetap terbaca saat error body bukan JSON. Beranda tidak membuka popup otomatis pada status submitted/reviewed; data lock dan kemampuan membaca tulisan tetap dipertahankan. Koneksi Gemini memakai project API milik pemilik belum dapat diuji di lingkungan ini.

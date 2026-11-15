@@ -1,6 +1,6 @@
+import { geminiConfiguration, generateGeminiContent } from "./gemini-transport";
 import { geminiError, geminiStatus } from "./gemini-errors";
 import {
-  GoogleGenAI,
   type GenerateContentParameters,
   type GenerateContentResponse,
 } from "@google/genai";
@@ -29,26 +29,10 @@ type ReviewOptions = {
   model?: string;
 };
 export async function reviewDocument(doc: any, options: ReviewOptions = {}) {
-  const apiKey = (options.apiKey ?? process.env.GEMINI_API_KEY ?? "").trim();
-  if (!apiKey) fail(503, "GEMINI_API_KEY belum diisi.");
-  if (apiKey.startsWith("GEMINI_API_KEY="))
-    fail(503, "Isi GEMINI_API_KEY dengan nilai key saja, tanpa nama variabel.");
-  const model = (
-    options.model ||
-    process.env.GEMINI_MODEL ||
-    "gemini-2.5-flash"
-  )
-    .trim()
-    .replace(/^models\//, "");
-  if (!/^[a-zA-Z0-9._-]{1,100}$/.test(model))
-    fail(503, "GEMINI_MODEL tidak valid. Isi nama model saja.");
-  const ai = new GoogleGenAI({
-    apiKey,
-    httpOptions: { timeout: 40000, retryOptions: { attempts: 1 } },
-  });
+  const { apiKey, model } = geminiConfiguration(options.apiKey, options.model);
   const generate =
     options.generate ||
-    ((p: GenerateContentParameters) => ai.models.generateContent(p));
+    ((p: GenerateContentParameters) => generateGeminiContent(p, apiKey));
   const sleep =
     options.sleep ||
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));

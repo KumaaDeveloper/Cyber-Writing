@@ -35,7 +35,7 @@ Toolbar teks sekarang menjadi komponen terpisah yang menerima instance editor ak
 
 ## Revisi pengiriman dan Gemini
 
-- Setelah kirim, judul popup menjadi **Tulisan sudah dikirim**, tombolnya **Lihat tulisan**, dan Mulai ulang tidak ditampilkan. Reader menampilkan isi server, tanpa tombol Kirim atau tools pengeditan. Tulisan terkirim tidak otomatis dibuka untuk edit setelah jeda berakhir.
+- Setelah kirim, beranda menampilkan sesi dan jadwal menulis lagi, tanpa popup otomatis. Akses Lihat tulisan membuka reader; Mulai ulang tidak ditampilkan untuk tulisan terkirim. Reader menampilkan isi server, tanpa tombol Kirim atau tools pengeditan. Tulisan terkirim tidak otomatis dibuka untuk edit setelah jeda berakhir.
 - Jeda pengiriman default **24 jam berjalan sejak submit berhasil**. Admin mengubahnya di **Pengaturan → Jeda pengiriman**, dalam jam; nilai 0 menonaktifkan jeda. Pengaturan berlaku global, termasuk terhadap pengiriman sebelumnya.
 - Pembatasan diperiksa di backend untuk browser asal dan NIM yang diisi. Mengganti nama/email atau sesi tidak melewati jeda. NIM bukan identitas terverifikasi karena penulis tidak login; aplikasi tidak dapat memastikan identitas orang yang sengaja memakai NIM berbeda dari browser baru.
 - Jeda menghalangi draft baru, penyimpanan, upload, dan pengiriman. Tulisan lama tetap dapat dibaca. Setelah jeda berakhir, penulis dapat membuat tulisan baru pada sesi yang sama selama sesi masih dibuka. Membuka editor yang sudah terkunci dapat memerlukan refresh setelah pengaturan admin berubah.
@@ -43,10 +43,19 @@ Toolbar teks sekarang menjadi komponen terpisah yang menerima instance editor ak
 - Migrasi `003_writer_cooldown.sql` membuat pengaturan dan riwayat jeda, mengisi riwayat dari pengiriman lama, dan menghapus constraint lama yang membatasi satu tulisan per sesi selamanya. Build Production menjalankannya otomatis jika DATABASE_URL tersedia.
 - Kartu sesi memakai tipografi seragam dan tanggal Mulai/Berakhir yang terpisah. Kolom Aksi pada daftar tulisan hanya berisi bintang dan hapus; klik judul tulisan untuk membukanya.
 - Gemini sekarang membedakan API key tidak valid, izin, billing, model tidak ditemukan, kuota, timeout, gangguan layanan, output kosong, dan JSON/nomor halaman tidak valid. Detail kredensial atau isi tulisan tidak dicetak ke log.
-- Retry otomatis SDK dibatasi satu attempt per request. Aplikasi mencoba ulang sekali hanya untuk error layanan 5xx, dengan jeda pendek dan batas total 95 detik. Error kredensial dan kuota tidak diulang otomatis. Riset Google Search dan pemformatan JSON tetap terpisah.
+- Request menggunakan REST resmi Google dengan status HTTP eksplisit, tanpa retry tersembunyi SDK. Aplikasi mencoba ulang sekali hanya untuk error layanan 5xx, dengan jeda pendek dan batas total 95 detik. Error kredensial dan kuota tidak diulang otomatis. Riset Google Search dan pemformatan JSON tetap terpisah.
 - Respons AI divalidasi sebelum disimpan. Tidak ada sumber grounding berarti hasil ditandai Kurang Valid/belum terverifikasi, bukan Valid. Hasil versi konten yang sama tetap memakai cache.
 
 Panggilan Gemini asli membutuhkan API key dan project Google yang memiliki akses/kuota. Tes lokal memakai transport simulasi; koneksi Google AI Studio dan Neon milik pemilik belum diuji di lingkungan pembangunan ini.
+
+## Revisi koneksi Gemini dan beranda
+
+- Default model diperbarui ke `gemini-3.8-flash`, sesuai model teks yang mendukung Google Search dan structured output pada dokumentasi Google. Environment GEMINI_MODEL yang sudah tersimpan tetap dipakai; ubah nilainya di Vercel lalu Redeploy untuk beralih model.
+- Transport pemeriksaan memakai REST resmi `generativelanguage.googleapis.com/v1beta/models/...:generateContent`. Key dikirim lewat header x-goog-api-key, bukan URL. Isi pemikiran internal (part thought) tidak dipakai sebagai jawaban pemeriksaan.
+- Pembacaan error kini mencakup exception bersarang, kode HTTP di JSON message, nama status Google (NOT_FOUND, RESOURCE_EXHAUSTED), serta penyebab DNS/TLS/koneksi. Tidak ada error/credential mentah yang dikembalikan ke browser.
+- **Pengaturan → Uji koneksi Gemini** melakukan GET metadata model menggunakan API key yang sama. Pengujian ini tidak mengirim tulisan dan tidak menjalankan generasi berbayar; hasil menunjukkan model tersedia atau error akses. Ini memeriksa koneksi/model, bukan menjamin hasil fact-check atau kemampuan grounding pada setiap permintaan.
+- Kembali ke beranda setelah mengirim tidak otomatis membuka modal. Beranda tetap menampilkan sesi, tenggat, waktu menulis lagi dan tombol mulai yang nonaktif selama jeda. Tulisan terkirim tetap bisa dibuka lewat Lihat tulisan terakhir. Popup otomatis hanya untuk draft/revisi yang dapat dilanjutkan.
+- Blok teks editable memiliki garis tipis dan highlight fokus. Font, lebar dokumen, ukuran heading, padding blok dan sidebar desktop diperbaiki. Reader tetap menampilkan isi tanpa garis input.
 
 ## Mulai dari sini
 
@@ -99,7 +108,7 @@ Buka `http://localhost:3000`. Masuk admin melalui `http://localhost:3000/admin`,
 | `ADMIN_USERNAME` | Username bootstrap; default `admin`. |
 | `ADMIN_BOOTSTRAP_PASSWORD` | Password bootstrap minimal 12 karakter dan maksimal 72 byte UTF-8. Hanya diperlukan saat membuat admin pertama. |
 | `GEMINI_API_KEY` | API key Gemini; server saja. |
-| `GEMINI_MODEL` | Default `gemini-2.5-flash`; pilih model yang mendukung Search grounding dan structured output. |
+| `GEMINI_MODEL` | Default `gemini-3.8-flash`; pilih model yang mendukung Search grounding dan structured output. |
 | `CLOUDINARY_CLOUD_NAME` | Nama cloud Cloudinary. |
 | `CLOUDINARY_API_KEY` | API key Cloudinary server. |
 | `CLOUDINARY_API_SECRET` | API secret Cloudinary server. |
@@ -250,5 +259,5 @@ Backup database dan retensi data peserta diatur pemilik aplikasi melalui Neon. J
 - Next.js cookies: https://nextjs.org/docs/app/api-reference/functions/cookies
 - Google Search grounding: https://ai.google.dev/gemini-api/docs/google-search
 - Gemini structured output: https://ai.google.dev/gemini-api/docs/structured-output
-- Model Gemini 2.5 Flash: https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash
+- Model Gemini 3.8 Flash: https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash
 - Batas Vercel Functions: https://vercel.com/docs/functions/limitations
