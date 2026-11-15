@@ -59,6 +59,8 @@ import {
   downloadJson,
 } from "./ui";
 import { ToolMenu } from "./tool-menu";
+import { AIResults } from "./ai-results";
+import { checkPages } from "@/lib/review-runner";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
 
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
@@ -117,6 +119,7 @@ export default function Workspace({
     [edit, setEdit] = useState(!admin),
     [panel, setPanel] = useState(""),
     [reviews, setReviews] = useState<any[]>([]),
+    [reviewProgress, setReviewProgress] = useState(""),
     [history, setHistory] = useState<any[]>([]),
     [note, setNote] = useState(""),
     [imageUrl, setImageUrl] = useState(""),
@@ -153,6 +156,12 @@ export default function Workspace({
     }
   }
   function update(d: FullDoc) {
+    const previous = current.current;
+    if (previous) {
+      const sharedChanged = previous.title !== d.title || previous.theme_title !== d.theme_title || JSON.stringify(previous.references) !== JSON.stringify(d.references);
+      setReviews((items) => items.map((review) => sharedChanged || JSON.stringify(previous.pages.find((page) => page.id === review.page_id)) !== JSON.stringify(d.pages.find((page) => page.id === review.page_id))
+        ? { ...review, is_current: false } : review));
+    }
     current.current = d;
     setDoc(d);
     dirty.current = true;
@@ -588,13 +597,17 @@ export default function Workspace({
     try {
       if (dirty.current && !(await save()))
         throw new Error("Simpan perubahan terlebih dahulu.");
-      const r = await api(endpoint + "/review", "POST", { force });
-      setReviews((v) => [r, ...v.filter((x) => x.id !== r.id)]);
       setPanel("review");
+      await checkPages(current.current!.pages,
+        (pageId) => api(endpoint + "/review", "POST", { force, page_id: pageId }),
+        setReviews,
+        (index, total) => setReviewProgress(`Memeriksa ${index}/${total}...`),
+      );
     } catch (e) {
       setError(errorText(e));
     } finally {
       setBusy(false);
+      setReviewProgress("");
     }
   }
   return (
@@ -785,15 +798,8 @@ export default function Workspace({
                   onClick={() => review()}
                 >
                   <Sparkles size={15} />
-                  {busy ? "Memeriksa..." : "Cek Gemini"}
+                  {busy ? reviewProgress || "Memeriksa..." : "Cek AI"}
                 </Button>
-                <button
-                  className="icon-button"
-                  aria-label="Hasil pemeriksaan"
-                  onClick={() => setPanel("review")}
-                >
-                  <Eye size={18} />
-                </button>
                 <button
                   className="icon-button"
                   aria-label="Riwayat revisi"
@@ -1412,7 +1418,7 @@ export default function Workspace({
           {
             references: "Sumber referensi",
             notes: "Catatan pengurus",
-            review: "Pemeriksaan Gemini",
+            review: "Pemeriksaan AI",
             history: "Riwayat perubahan",
             conflict: "Pulihkan perubahan",
           }[panel] || "Detail"
@@ -1508,62 +1514,11 @@ export default function Workspace({
         )}
         {panel === "review" && (
           <>
-            {reviews.length === 0 ? (
-              <p className="muted">Tulisan belum diperiksa.</p>
-            ) : (
-              reviews.map((r, i) => (
-                <div className="review-result" key={r.id}>
-                  <span className="badge">{r.status}</span>
-                  <small>
-                    Versi {r.content_version} · {date(r.checked_at)}
-                  </small>
-                  {r.content_version !== doc.version && (
-                    <div className="warning-banner">
-                      Pemeriksaan usang: konten telah berubah.
-                    </div>
-                  )}
-                  <p>{r.summary}</p>
-                  {r.findings_json.map((f: any, j: number) => (
-                    <div className="finding" key={j}>
-                      <strong>
-                        Halaman {f.page} · {f.status}
-                      </strong>
-                      <blockquote>{f.claim}</blockquote>
-                      <p>{f.reason}</p>
-                      <small>Saran: {f.suggestion}</small>
-                    </div>
-                  ))}
-                  {r.sources_json.map((s: any, j: number) => (
-                    <a
-                      className="source-link"
-                      key={j}
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {s.title} ↗
-                    </a>
-                  ))}
-                  {r.search_html && (
-                    <iframe
-                      title="Saran penelusuran Google"
-                      sandbox="allow-popups allow-popups-to-escape-sandbox"
-                      srcDoc={r.search_html}
-                      className="search-suggestions"
-                    />
-                  )}
-                  {i === 0 && (
-                    <p className="muted">
-                      Hasil AI membantu peninjauan. Keputusan akhir tetap pada
-                      pengurus.
-                    </p>
-                  )}
-                </div>
-              ))
-            )}
+            {reviewProgress && <p className="muted" role="status">{reviewProgress}</p>}
+            <AIResults pages={doc.pages} reviews={reviews} />
             <Button disabled={busy} onClick={() => review(true)}>
               <Sparkles size={16} />
-              {busy ? "Memeriksa..." : "Periksa ulang"}
+              {busy ? reviewProgress || "Memeriksa..." : "Cek ulang"}
             </Button>
             <ErrorBox message={error} />
           </>

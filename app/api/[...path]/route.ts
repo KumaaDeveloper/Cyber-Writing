@@ -34,7 +34,7 @@ import {
   saveDocument,
   lockDocument,
 } from "@/lib/documents";
-import { reviewDocument } from "@/lib/ai";
+import { cachedPageReview, checkPage, listPageReviews, reviewSummaryJoin } from "@/lib/reviews";
 import { queueAssetDeletion, cleanDeletedAssets } from "@/lib/assets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -390,7 +390,7 @@ async function handler(
           );
           const where = sql`(${q}='' OR w.name ILIKE ${"%" + q + "%"} OR w.nim ILIKE ${"%" + q + "%"}) AND (${session}='' OR s.session_id::text=${session}) AND (${status}='' OR s.status=${status}) AND (${theme}='' OR t.title=${theme}) AND (NOT ${star} OR s.is_starred) AND (NOT ${ai} OR r.id IS NOT NULL)`;
           const data = await rows(
-            sql`SELECT s.id,s.title,s.status,s.is_starred,s.updated_at,s.content_version,w.name,w.nim,w.membership_status,w.department,t.title AS theme_title,ws.title AS session_title,r.status AS ai_status,r.content_version AS ai_version,(SELECT count(*)::int FROM submission_pages p WHERE p.submission_id=s.id) AS pages,count(*) OVER()::int AS total FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id LEFT JOIN LATERAL (SELECT id,status,content_version FROM ai_reviews WHERE submission_id=s.id ORDER BY checked_at DESC LIMIT 1) r ON true WHERE ${where} ORDER BY s.updated_at DESC LIMIT 15 OFFSET ${(page - 1) * 15}`,
+            sql`SELECT s.id,s.title,s.status,s.is_starred,s.updated_at,s.content_version,w.name,w.nim,w.membership_status,w.department,t.title AS theme_title,ws.title AS session_title,r.status AS ai_status,r.content_version AS ai_version,(SELECT count(*)::int FROM submission_pages p WHERE p.submission_id=s.id) AS pages,count(*) OVER()::int AS total FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id ${reviewSummaryJoin} WHERE ${where} ORDER BY s.updated_at DESC LIMIT 15 OFFSET ${(page - 1) * 15}`,
           );
           return json({ items: data, total: data[0]?.total || 0, page });
         }
@@ -402,12 +402,8 @@ async function handler(
                 sql`SELECT id,content_version,actor,created_at FROM submission_revisions WHERE submission_id=${target} ORDER BY created_at DESC LIMIT 50`,
               ),
             );
-          return json({
-            ...(await getDocument(target)),
-            reviews: await rows(
-              sql`SELECT * FROM ai_reviews WHERE submission_id=${target} ORDER BY checked_at DESC LIMIT 10`,
-            ),
-          });
+          const doc = await getDocument(target);
+          return json({ ...doc, reviews: await listPageReviews(doc) });
         }
         if (method === "PUT")
           return json(
@@ -465,21 +461,15 @@ async function handler(
         }
         if (method === "POST" && sub === "review") {
           const doc = await getDocument(target);
-          const b = z
-            .object({ force: z.boolean().optional() })
-            .parse(await readJson(req));
-          const [cached] = await rows(
-            sql`SELECT * FROM ai_reviews WHERE submission_id=${target} AND content_version=${doc.version} ORDER BY checked_at DESC LIMIT 1`,
-          );
-          if (cached && !b.force) return json(cached);
-          await limit("ai:" + a.id, 20, 3600);
-          await limit("ai-doc:" + target, 2, 60);
-          const result = await reviewDocument(doc);
-          const [r] = await rows(
-            sql`INSERT INTO ai_reviews(submission_id,content_version,status,summary,findings_json,sources_json,search_html,model_name) VALUES(${target},${doc.version},${result.status},${result.summary},${JSON.stringify(result.findings)}::jsonb,${JSON.stringify(result.sources)}::jsonb,${result.search_html},${result.model}) RETURNING *`,
-          );
-          await audit(a.id, "submission.review", target);
-          return json(r);
+          const b = z.object({ page_id: z.uuid(), force: z.boolean().optional() }).parse(await readJson(req));
+          const cached = await cachedPageReview(doc, b.page_id);
+          if (!cached || b.force) {
+            await limit("ai:" + a.id, 120, 3600);
+            await limit("ai-page:" + target + ":" + b.page_id, 2, 60);
+          }
+          await checkPage(doc, b.page_id, { force: b.force });
+          if (!cached || b.force) await audit(a.id, "submission.review.page", target);
+          return json({ items: await listPageReviews(await getDocument(target)) });
         }
         if (method === "DELETE") {
           await db().transaction(async (tx) => {

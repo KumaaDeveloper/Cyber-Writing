@@ -109,3 +109,11 @@ Hasil akhir: 44 tes otomatis dan pemeriksaan TypeScript/build produksi dijalanka
 Lima tes tambahan mencakup variasi format JSON lengkap, pemulihan satu kali dari output tidak sesuai schema, finish reason MAX_TOKENS, penolakan berulang untuk output kosong/terpotong/halaman di luar batas, dan pemblokiran konten tanpa retry. Tes transport memeriksa maxOutputTokens benar-benar dikirim. Tes DOM editor mengirim event Ctrl+Z dan Ctrl+Y, memeriksa browser default dicegah dan isi/format kembali sesuai riwayat, tanpa bantuan teks pada UI. Label Workspace dipindah dari grup logo ke tengah header; pemisah vertikal dihapus.
 
 Validasi revisi ini mencakup 49 tes otomatis, TypeScript dan build produksi. Gemini diuji memakai respons simulasi; API milik pemilik serta tampilan browser produksi belum diverifikasi.
+
+## Pemeriksaan dan penyimpanan per halaman
+
+Tes PostgreSQL/PGlite menggunakan migrasi 004 dan service produksi memeriksa dua request halaman terpisah, simpan/baca hasil, kegagalan halaman kedua dengan halaman pertama tetap tersimpan, penggunaan cache, edit satu halaman, riwayat yang bertahan saat baris halaman diganti, pengurutan ulang, force check per halaman, penghapusan halaman, penolakan hasil ketika konten berubah selama generasi, dan pemisahan hasil lama satu dokumen. Query ringkasan daftar tulisan diuji untuk VALID, BELUM LENGKAP dan TIDAK VALID. Tes runner memeriksa proses berurutan dan retensi hasil parsial. Tes AI memastikan ketiadaan Search tidak otomatis menurunkan penilaian serta temuan negatif tidak ditutupi oleh status keseluruhan VALID.
+
+Gemini memakai respons simulasi dalam tes. Akurasi faktual model dan tampilan produksi belum diuji memakai API key atau deployment pemilik.
+
+Revisi per halaman: 57 tes otomatis berhasil. Build produksi dan TypeScript berhasil. Migrasi 004 diuji di PGlite, bukan database Neon pemilik.

@@ -109,7 +109,7 @@ test("Gemini retries one transient 503 but does not retry invalid keys or quota"
     assert.equal(n, 1);
   }
 });
-test("invalid JSON or invalid page numbers are rejected and missing grounding cannot be called verified", async () => {
+test("invalid JSON or invalid page numbers are rejected while missing grounding does not force an inaccurate rating", async () => {
   for (const text of [
     "not-json",
     JSON.stringify({
@@ -143,9 +143,9 @@ test("invalid JSON or invalid page numbers are rejected and missing grounding ca
         ? response({ text: "Analisis tanpa sumber" })
         : response({ text: json }),
   });
-  assert.equal(r.status, "KURANG VALID");
-  assert.equal(r.findings[0].status, "KURANG VALID");
-  assert.match(r.summary, /belum terverifikasi/);
+  assert.equal(r.status, "VALID");
+  assert.equal(r.findings[0].status, "VALID");
+  assert.deepEqual(r.sources, []);
 });
 
 test("default free-tier review never enables Search and never presents model citations as verified sources", async () => {
@@ -166,10 +166,12 @@ test("default free-tier review never enables Search and never presents model cit
       assert.equal(call.config?.tools, undefined);
     }
     assert.match(String(calls[0].config?.systemInstruction), /Tidak ada akses penelusuran/);
-    assert.equal(result.status, "KURANG VALID");
+    assert.equal(result.status, "VALID");
     assert.deepEqual(result.sources, []);
     assert.equal(result.search_html, "");
-    assert.match(result.summary, /tanpa penelusuran web.*belum terverifikasi/);
+    assert.equal(result.summary, JSON.parse(json).summary);
+    assert.match(String(calls[0].config?.systemInstruction), /Ketiadaan sumber internet bukan alasan otomatis/);
+    assert.match(String(calls[0].config?.systemInstruction), /Jangan menganggap teks benar hanya karena berasal dari ChatGPT/);
   } finally {
     if (previous === undefined) delete process.env.GEMINI_SEARCH_GROUNDING;
     else process.env.GEMINI_SEARCH_GROUNDING = previous;
@@ -239,4 +241,14 @@ test("blocked content is distinguished from a JSON format failure and never retr
     return response({ candidates: [{ finishReason: "SAFETY" }] });
   } }), (error: any) => error.status === 502 && /kebijakan konten/.test(error.message));
   assert.equal(calls, 1);
+});
+
+test("material negative findings cannot be hidden by a VALID summary", async () => {
+  for (const status of ["KURANG VALID", "TIDAK VALID"]) {
+    const value = JSON.parse(json);
+    value.findings[0].status = status;
+    const result = await reviewDocument(doc, { ...freeOptions, generate: async () => response({ text: JSON.stringify(value) }) });
+    assert.equal(result.status, status);
+    assert.equal(result.findings[0].status, status);
+  }
 });
