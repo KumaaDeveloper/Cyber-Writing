@@ -136,6 +136,16 @@ test("Insert tools toggle, close on selection/outside/Escape, and local text too
       assert.ok(w.document.querySelector('button[aria-label="Tebal"]'));
     }
     assert.equal(JSON.stringify(active().getJSON()), snapshot);
+    const shortcut = async (key: "z" | "y") => {
+      const event = new w.KeyboardEvent("keydown", { key, code: key === "z" ? "KeyZ" : "KeyY", ctrlKey: true, bubbles: true, cancelable: true });
+      await act(async () => { active().view.dom.dispatchEvent(event); });
+      assert.equal(event.defaultPrevented, true, `Ctrl+${key} is handled by the editor`);
+    };
+    await shortcut("z");
+    assert.equal(active().isActive("bold"), false);
+    await shortcut("y");
+    assert.equal(active().isActive("bold"), true);
+    assert.equal(JSON.stringify(active().getJSON()), snapshot);
     await click('button[aria-label="Undo"]');
     assert.equal(active().isActive("bold"), false);
     await click(formatTrigger);

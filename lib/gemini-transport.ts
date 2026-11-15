@@ -54,6 +54,8 @@ export async function generateGeminiContent(
   if (typeof config.systemInstruction === "string")
     body.systemInstruction = { parts: [{ text: config.systemInstruction }] };
   if (config.tools?.length) body.tools = [{ google_search: {} }];
+  if (config.maxOutputTokens !== undefined)
+    body.generationConfig.maxOutputTokens = config.maxOutputTokens;
   if (config.responseMimeType)
     body.generationConfig.responseMimeType = config.responseMimeType;
   if (config.responseJsonSchema)

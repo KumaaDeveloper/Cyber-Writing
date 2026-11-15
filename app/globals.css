@@ -1060,11 +1060,6 @@ footer > span:last-child {
 .workspace .brand small {
   font-size: 6px;
 }
-.workspace-divider {
-  height: 23px;
-  width: 1px;
-  background: #36363e;
-}
 .workspace-label {
   font-size: 8px;
   letter-spacing: 0.15em;
@@ -2623,8 +2618,7 @@ footer > span:last-child {
   .workspace-header {
     padding: 0 16px;
   }
-  .workspace-label,
-  .workspace-divider {
+  .workspace-label {
     display: none;
   }
   .document-wrap {
@@ -3914,3 +3908,9 @@ footer > span:last-child {
  .page-list>button>span:nth-child(2){font-size:12px}
  .page-list small{font-size:10px}
 }
+
+/* The workspace title is centered independently of the logo and action widths. */
+.workspace-header{position:relative}
+.workspace-header>.workspace-label{display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none}
+@media(max-width:800px){.workspace-header>.workspace-label{top:31px}.workspace-header .workspace-brand{max-width:calc(50% - 48px)}}
+@media(max-width:420px){.workspace-header .brand>span:last-child{display:none}.workspace-header .workspace-brand{max-width:none}}

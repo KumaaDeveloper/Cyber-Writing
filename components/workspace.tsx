@@ -609,11 +609,10 @@ export default function Workspace({
             <Menu />
           </button>
           <Brand />
-          <span className="workspace-divider" />
-          <span className="workspace-label">
-            {admin ? "ADMIN EDITOR" : "WORKSPACE"}
-          </span>
         </div>
+        <span className="workspace-label">
+          {admin ? "ADMIN EDITOR" : "WORKSPACE"}
+        </span>
         <div className="workspace-actions">
           <span className="save-state" role="status">
             {saved.includes("Offline") ? (

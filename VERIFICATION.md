@@ -103,3 +103,9 @@ Lima tes tambahan memeriksa format REST Google Search/JSON, API key hanya di hea
 Default Gemini menjadi gemini-3.5-flash-lite dan Search grounding dimatikan secara default. Tes transport/AI memeriksa model, tidak ada tools Google Search pada mode default, sumber model tidak dianggap terverifikasi, dan mode Search opsional tetap memproses sumber grounding. Tes DOM menggunakan komponen menu produksi: toggle, tombol tutup, klik di luar, Escape, penambahan teks, format tebal/miring, undo, dan dua text box yang terpisah. Tes NIM memeriksa penyaringan simbol/huruf, nol di depan dan penolakan nilai non-angka oleh server. Tombol beranda dikelompokkan dengan gap 8px.
 
 Hasil akhir: 44 tes otomatis dan pemeriksaan TypeScript/build produksi dijalankan untuk revisi ini. Pengujian Gemini memakai respons simulasi; API key pemilik dan tampilan pada browser produksi belum diverifikasi.
+
+## Respons Gemini dan shortcut keyboard
+
+Lima tes tambahan mencakup variasi format JSON lengkap, pemulihan satu kali dari output tidak sesuai schema, finish reason MAX_TOKENS, penolakan berulang untuk output kosong/terpotong/halaman di luar batas, dan pemblokiran konten tanpa retry. Tes transport memeriksa maxOutputTokens benar-benar dikirim. Tes DOM editor mengirim event Ctrl+Z dan Ctrl+Y, memeriksa browser default dicegah dan isi/format kembali sesuai riwayat, tanpa bantuan teks pada UI. Label Workspace dipindah dari grup logo ke tengah header; pemisah vertikal dihapus.
+
+Validasi revisi ini mencakup 49 tes otomatis, TypeScript dan build produksi. Gemini diuji memakai respons simulasi; API milik pemilik serta tampilan browser produksi belum diverifikasi.

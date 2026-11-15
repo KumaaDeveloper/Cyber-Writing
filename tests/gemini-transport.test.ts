@@ -70,6 +70,7 @@ test("REST transport sends key in headers, serializes Google Search/JSON correct
       config: {
         responseMimeType: "application/json",
         responseJsonSchema: { type: "object" },
+        maxOutputTokens: 16384,
       },
     },
     "test-fixture-secret",
@@ -77,6 +78,7 @@ test("REST transport sends key in headers, serializes Google Search/JSON correct
   );
   const jsonBody = JSON.parse(String(captured?.body));
   assert.equal(jsonBody.generationConfig.responseMimeType, "application/json");
+  assert.equal(jsonBody.generationConfig.maxOutputTokens, 16384);
   assert.deepEqual(jsonBody.generationConfig.responseJsonSchema, {
     type: "object",
   });

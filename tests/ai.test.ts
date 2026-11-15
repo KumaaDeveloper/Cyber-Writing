@@ -157,10 +157,10 @@ test("default free-tier review never enables Search and never presents model cit
       apiKey: "test-fixture-key",
       generate: async (p) => {
         calls.push(p);
-        return calls.length === 1 ? research : response({ text: json });
+        return response({ ...research, text: json });
       },
     });
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 1);
     for (const call of calls) {
       assert.equal(call.model, "gemini-3.5-flash-lite");
       assert.equal(call.config?.tools, undefined);
@@ -174,4 +174,69 @@ test("default free-tier review never enables Search and never presents model cit
     if (previous === undefined) delete process.env.GEMINI_SEARCH_GROUNDING;
     else process.env.GEMINI_SEARCH_GROUNDING = previous;
   }
+});
+
+const freeOptions = { apiKey: "test-fixture-key", model: "gemini-3.5-flash-lite", searchGrounding: false, sleep: async () => {} };
+test("review accepts complete fenced JSON, status casing and numeric page strings without inventing findings", async () => {
+  const value = JSON.parse(json);
+  value.status = "kurang_valid";
+  value.findings[0].status = "valid";
+  value.findings[0].page = "1";
+  delete value.findings[0].suggestion;
+  let calls = 0;
+  const result = await reviewDocument(doc, { ...freeOptions, generate: async () => {
+    calls++;
+    return response({ text: "```json\n" + JSON.stringify(value) + "\n```" });
+  } });
+  assert.equal(calls, 1);
+  assert.equal(result.findings[0].page, 1);
+  assert.equal(result.findings[0].suggestion, "");
+  assert.equal(result.findings[0].claim, value.findings[0].claim);
+});
+test("malformed structured output is retried once with original material and a smaller schema", async () => {
+  const calls: GenerateContentParameters[] = [];
+  const result = await reviewDocument(doc, { ...freeOptions, generate: async (p) => {
+    calls.push(p);
+    return response({ text: calls.length === 1 ? '{"summary":"incomplete"}' : json });
+  } });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].contents, calls[1].contents);
+  assert.equal(calls[0].config?.responseMimeType, "application/json");
+  assert.equal((calls[0].config?.responseJsonSchema as any).properties.findings.maxItems, 20);
+  assert.equal((calls[1].config?.responseJsonSchema as any).properties.findings.maxItems, 8);
+  assert.equal(calls[1].config?.maxOutputTokens, 16384);
+  assert.equal(result.findings.length, 1);
+  assert.ok(!JSON.stringify(calls).includes("Private Author"));
+});
+test("MAX_TOKENS cannot be saved as complete even if the fragment parses, then compact retry succeeds", async () => {
+  let calls = 0;
+  const result = await reviewDocument(doc, { ...freeOptions, generate: async () => {
+    calls++;
+    return response({ text: json, candidates: [{ finishReason: calls === 1 ? "MAX_TOKENS" : "STOP" }] });
+  } });
+  assert.equal(calls, 2);
+  assert.equal(result.findings.length, 1);
+});
+test("persistently truncated, malformed, empty or out-of-range results fail after two attempts", async () => {
+  for (const [value, finishReason, message] of [
+    ['{"summary":"cut', "MAX_TOKENS", /terpotong/],
+    ["not-json", "STOP", /terstruktur/],
+    ["", "STOP", /terstruktur/],
+    [JSON.stringify({ ...JSON.parse(json), findings: [{ ...JSON.parse(json).findings[0], page: 9 }] }), "STOP", /terstruktur/],
+  ] as const) {
+    let calls = 0;
+    await assert.rejects(reviewDocument(doc, { ...freeOptions, generate: async () => {
+      calls++;
+      return response({ text: value, candidates: [{ finishReason }] });
+    } }), (error: any) => error.status === 502 && message.test(error.message));
+    assert.equal(calls, 2);
+  }
+});
+test("blocked content is distinguished from a JSON format failure and never retried", async () => {
+  let calls = 0;
+  await assert.rejects(reviewDocument(doc, { ...freeOptions, generate: async () => {
+    calls++;
+    return response({ candidates: [{ finishReason: "SAFETY" }] });
+  } }), (error: any) => error.status === 502 && /kebijakan konten/.test(error.message));
+  assert.equal(calls, 1);
 });
