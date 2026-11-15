@@ -181,7 +181,7 @@ test("default free-tier review never enables Search and never presents model cit
 const freeOptions = { apiKey: "test-fixture-key", model: "gemini-3.5-flash-lite", searchGrounding: false, sleep: async () => {} };
 test("review accepts complete fenced JSON, status casing and numeric page strings without inventing findings", async () => {
   const value = JSON.parse(json);
-  value.status = "kurang_valid";
+  value.status = "valid";
   value.findings[0].status = "valid";
   value.findings[0].page = "1";
   delete value.findings[0].suggestion;
@@ -241,4 +241,21 @@ test("blocked content is distinguished from a JSON format failure and never retr
     return response({ candidates: [{ finishReason: "SAFETY" }] });
   } }), (error: any) => error.status === 502 && /kebijakan konten/.test(error.message));
   assert.equal(calls, 1);
+});
+
+test("negative findings determine the verdict, including material errors in otherwise VALID output", async () => {
+  for (const status of ["KURANG VALID", "TIDAK VALID"]) {
+    const value = JSON.parse(json);
+    value.findings[0].status = status;
+    const result = await reviewDocument(doc, { ...freeOptions, generate: async () => response({ text: JSON.stringify(value) }) });
+    assert.equal(result.status, status);
+  }
+});
+test("a negative verdict without a concrete negative finding is retried, never silently upgraded to VALID", async () => {
+  let calls = 0;
+  await assert.rejects(reviewDocument(doc, { ...freeOptions, generate: async () => {
+    calls++;
+    return response({ text: JSON.stringify({ status: "KURANG VALID", summary: "Tidak ada web.", findings: [] }) });
+  } }), (error: any) => error.status === 502);
+  assert.equal(calls, 2);
 });

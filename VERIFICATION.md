@@ -109,3 +109,9 @@ Hasil akhir: 44 tes otomatis dan pemeriksaan TypeScript/build produksi dijalanka
 Lima tes tambahan mencakup variasi format JSON lengkap, pemulihan satu kali dari output tidak sesuai schema, finish reason MAX_TOKENS, penolakan berulang untuk output kosong/terpotong/halaman di luar batas, dan pemblokiran konten tanpa retry. Tes transport memeriksa maxOutputTokens benar-benar dikirim. Tes DOM editor mengirim event Ctrl+Z dan Ctrl+Y, memeriksa browser default dicegah dan isi/format kembali sesuai riwayat, tanpa bantuan teks pada UI. Label Workspace dipindah dari grup logo ke tengah header; pemisah vertikal dihapus.
 
 Validasi revisi ini mencakup 49 tes otomatis, TypeScript dan build produksi. Gemini diuji memakai respons simulasi; API milik pemilik serta tampilan browser produksi belum diverifikasi.
+
+## Validasi Cek AI per halaman, revisi 15 November 2026
+
+64 tes otomatis berhasil, TypeScript berhasil, dan build produksi Next.js 16.4.6 berhasil. Tes database menggunakan PGlite mencakup dua halaman yang diperiksa terpisah, simpan/baca hasil, cache, edit satu halaman, pengurutan ulang, pemeriksaan ulang, penghapusan halaman, kegagalan provider pada halaman kedua, dan penolakan hasil bila konten berubah selama generasi. Migrasi 005 diuji berulang dari indeks unik instalasi lama. Tes AI memastikan tanpa Search tidak otomatis menjadi Kurang Valid, temuan negatif menentukan status, dan vonis negatif tanpa temuan tidak disimpan sebagai VALID.
+
+Panggilan Gemini disimulasikan. Akurasi faktual dengan API pemilik, database Neon produksi, UI browser produksi, dan eksekusi skrip CMD pada Windows belum diuji dalam lingkungan ini. Build lokal melewati setup database karena DATABASE_URL tidak tersedia.

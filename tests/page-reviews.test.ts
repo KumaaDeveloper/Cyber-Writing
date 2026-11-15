@@ -55,7 +55,7 @@ test("migration stores and retrieves separate page reviews, retains earlier reco
     const submission = (await pg.query<{ id: string }>("INSERT INTO submissions(session_id,theme_id,writer_id,owner_hash) VALUES($1,$2,$3,'hash') RETURNING id", [session, theme, writer])).rows[0].id;
     for (const [i, page] of doc.pages.entries()) {
       await pg.query("INSERT INTO submission_pages(id,submission_id,page_number,title,content_json) VALUES($1,$2,$3,$4,'[]')", [page.id, submission, i + 1, page.title]);
-      const result = await pg.query("INSERT INTO ai_reviews(submission_id,content_version,page_id,page_number,content_hash,status,summary,findings_json,sources_json,model_name) VALUES($1,1,$2,$3,$4,'VALID',$5,'[]','[]','test') RETURNING page_id,summary", [submission, page.id, i + 1, pageReviewFingerprint(doc, page), "Hasil halaman " + (i + 1)]);
+      const result = await pg.query<{ page_id: string; summary: string }>("INSERT INTO ai_reviews(submission_id,content_version,page_id,page_number,content_hash,status,summary,findings_json,sources_json,model_name) VALUES($1,1,$2,$3,$4,'VALID',$5,'[]','[]','test') RETURNING page_id,summary", [submission, page.id, i + 1, pageReviewFingerprint(doc, page), "Hasil halaman " + (i + 1)]);
       assert.equal(result.rows[0].page_id, page.id);
     }
     const stored = await pg.query<{page_id: string; summary: string}>("SELECT page_id,summary FROM ai_reviews WHERE submission_id=$1 ORDER BY page_number", [submission]);
@@ -65,4 +65,18 @@ test("migration stores and retrieves separate page reviews, retains earlier reco
   } finally {
     await pg.close();
   }
+});
+
+test("upgrading the original unique review index is repeatable and removes the obsolete uniqueness restriction", async () => {
+  const pg = new PGlite();
+  try {
+    await pg.exec(await readFile("db/001_initial.sql", "utf8"));
+    await pg.exec(await readFile("db/004_page_reviews.sql", "utf8"));
+    await pg.exec("DROP INDEX reviews_page_content; CREATE UNIQUE INDEX reviews_page_content ON ai_reviews(submission_id,page_id,content_hash)");
+    const migration = await readFile("db/005_page_review_history.sql", "utf8");
+    await pg.exec(migration);
+    await pg.exec(migration);
+    const index = await pg.query<{ indisunique: boolean }>("SELECT indisunique FROM pg_index JOIN pg_class ON pg_class.oid=indexrelid WHERE relname='reviews_page_content'");
+    assert.equal(index.rows[0].indisunique, false);
+  } finally { await pg.close(); }
 });

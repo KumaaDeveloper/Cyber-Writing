@@ -44,7 +44,7 @@ Toolbar teks menerima instance editor milik text box yang bersangkutan. Editor t
 - Kartu sesi memakai tipografi seragam dan tanggal Mulai/Berakhir yang terpisah. Kolom Aksi pada daftar tulisan hanya berisi bintang dan hapus; klik judul tulisan untuk membukanya.
 - Gemini sekarang membedakan API key tidak valid, izin, billing, model tidak ditemukan, kuota, timeout, gangguan layanan, output kosong, dan JSON/nomor halaman tidak valid. Detail kredensial atau isi tulisan tidak dicetak ke log.
 - Request menggunakan REST resmi Google dengan status HTTP eksplisit, tanpa retry tersembunyi SDK. Aplikasi mencoba ulang sekali hanya untuk error layanan 5xx, dengan jeda pendek dan batas total 95 detik. Error kredensial dan kuota tidak diulang otomatis. Mode tanpa Search memakai satu permintaan JSON langsung. Mode Search memisahkan riset dan pemformatan JSON. Google Search hanya diaktifkan jika GEMINI_SEARCH_GROUNDING=true.
-- Respons AI divalidasi sebelum disimpan. Tidak ada sumber grounding berarti hasil ditandai Kurang Valid/belum terverifikasi, bukan Valid. Hasil versi konten yang sama tetap memakai cache.
+- Respons AI divalidasi sebelum disimpan. Status mengikuti temuan faktual; ketiadaan grounding tidak otomatis menurunkan status. Hasil halaman dengan konten dan konfigurasi yang sama memakai cache.
 
 Panggilan Gemini asli membutuhkan API key dan project Google yang memiliki akses/kuota. Tes lokal memakai transport simulasi; koneksi Google AI Studio dan Neon milik pemilik belum diuji di lingkungan pembangunan ini.
 
@@ -179,9 +179,9 @@ Cloudinary memakai upload backend bertanda tangan. Tidak perlu unsigned upload p
 - Riwayat perubahan menyimpan maksimal 50 snapshot terakhir per tulisan; UI menampilkan daftar versinya. Tidak ada pemulihan otomatis snapshot ke versi aktif.
 - Audit aktivitas admin dan pengaturan kata sandi/aturan NIM.
 - Pemeriksaan Gemini dua tahap: riset dengan Google Search, kemudian struktur JSON. Tidak mengirim identitas penulis ke Gemini.
-- Status Valid/Kurang Valid/Tidak Valid, temuan per halaman, saran, sumber dari grounding metadata, dan versi konten.
+- Status Valid/Kurang Valid/Tidak Valid, klaim dan alasan per halaman, sumber dari grounding metadata, dan waktu penyimpanan.
 - Hasil cache dipakai ulang; perubahan konten menandai ulasan lama sebagai usang. Pemeriksaan ulang tersedia secara manual.
-- Tanpa hasil grounding, status diturunkan menjadi Kurang Valid dan ditandai belum terverifikasi dari internet.
+- Tanpa hasil grounding, status tetap mengikuti masalah faktual yang spesifik. Paragraf ringkasan dan bagian Saran tidak ditampilkan.
 
 ### Mobile dan aksesibilitas
 
@@ -265,7 +265,7 @@ Backup database dan retensi data peserta diatur pemilik aplikasi melalui Neon. J
 
 ## Revisi free tier dan kontrol editor
 
-Default model adalah `gemini-3.5-flash-lite`. Di Vercel ubah `GEMINI_MODEL` ke nilai tersebut; biarkan `GEMINI_SEARCH_GROUNDING` kosong atau `false`, lalu Redeploy. Google mencantumkan generasi teks model ini pada free tier, tetapi Search grounding tidak tersedia pada tier itu. Karena itu aplikasi tidak lagi mengaktifkan Search secara default. Pemeriksaan tanpa Search menggunakan pengetahuan model dan materi yang dikirim; hasil diberi penanda belum terverifikasi dari internet, tanpa sumber hasil karangan model. Kuota dan akses project tetap mengikuti Google. Referensi: https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite
+Default model adalah `gemini-3.5-flash-lite`. Pengaturan model dan akses mengikuti project Gemini pemilik. Search tidak diaktifkan secara default. Pemeriksaan tanpa Search menggunakan pengetahuan model dan materi yang dikirim; status dinilai dari klaim dan alasan konkret, tanpa penurunan otomatis hanya karena tidak ada penelusuran. Sumber web hanya diambil dari metadata Search bila fitur tersebut diaktifkan.
 
 NIM disaring menjadi digit ASCII saat mengetik maupun paste; nol di depan tetap dipertahankan dan validasi server tetap berlaku. Tombol pada box sesi kini satu grup dengan jarak 8px. Menu Tools utama berupa dropdown tetap dekat tombol; format teks ditangani secara lokal di tiap text box.
 
@@ -282,3 +282,13 @@ Ctrl+Z dan Ctrl+Y memakai riwayat editor yang sama dengan tombol Undo/Redo, tanp
 - Pemeriksaan tidak lagi memaksa **KURANG VALID** hanya karena Google Search tidak aktif/tidak ada sitasi. Status mengikuti masalah faktual yang spesifik. Paragraf ringkasan review (termasuk teks generik soal pemeriksaan tanpa web) serta label **Saran:** dihapus dari tampilan hasil; alasan tiap temuan faktual tetap tersedia.
 - Migrasi baru `db/004_page_reviews.sql` menambahkan keterkaitan halaman dan sidik konten pada hasil AI. Data review lama tidak dihapus, tetapi hasil lama yang hanya mencakup seluruh dokumen tidak ditampilkan sebagai review halaman baru.
 - Setelah mengunggah pembaruan, jalankan `npm run build` pada Production dengan `DATABASE_URL` yang benar agar migrasi diterapkan (atau `npm run db:migrate`). Tanpa migrasi tersebut, endpoint Cek AI per halaman belum dapat bekerja. Gemini tetap membutuhkan `GEMINI_API_KEY` yang aktif.
+
+### Penyimpanan hasil dan transfer revisi
+
+Pemeriksaan menyimpan satu hasil per permintaan halaman. Hasil yang sudah berhasil tetap tersimpan jika pemeriksaan berikutnya gagal. Pengurus dapat memeriksa ulang satu halaman; hasil terbaru digunakan dan hasil sebelumnya tetap disimpan. Perubahan konten selama panggilan AI ditolak sebelum hasil disimpan. Editor langsung menandai hasil usang saat isi halaman atau referensi bersama berubah. Perubahan pada halaman lain dan pengurutan halaman tidak membatalkan hasil yang isinya tetap sama.
+
+Status negatif wajib memiliki temuan spesifik. Respons negatif tanpa temuan dicoba ulang, kemudian gagal tanpa menyimpan status yang tidak berdasar. Isi dari ChatGPT dinilai berdasarkan klaimnya; asal teks tidak menjamin benar atau salah. Ketepatan faktual model tetap memerlukan pengujian menggunakan API nyata.
+
+Migrasi 004 menambah kolom halaman. Migrasi 005 menyelaraskan indeks instalasi lama sehingga pemeriksaan ulang dapat menyimpan hasil baru. Build Production dengan DATABASE_URL menerapkan migrasi otomatis. Preview melewati migrasi otomatis; jalankan migrasi pada database preview bila diperlukan.
+
+Arsip revisi menyertakan TRANSFER-KE-GITHUB.cmd di samping folder cyber-writing. Skrip memakai robocopy /E /IS /IT ke D:\Downloads\Cyber-Writing, mengambil main terbaru, membuat commit perubahan, lalu push ke https://github.com/KumaaDeveloper/Cyber-Writing. Git harus terpasang dan sudah memiliki akses GitHub. Skrip berhenti bila repo tujuan salah atau masih memiliki perubahan lokal yang belum disimpan.

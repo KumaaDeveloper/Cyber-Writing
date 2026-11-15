@@ -59,6 +59,7 @@ import {
   downloadJson,
 } from "./ui";
 import { ToolMenu } from "./tool-menu";
+import { reviewInputUnchanged } from "@/lib/review-runner";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
 
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
@@ -154,6 +155,10 @@ export default function Workspace({
     }
   }
   function update(d: FullDoc) {
+    const previous = current.current;
+    if (previous) setReviews((items) => items.map((review) =>
+      reviewInputUnchanged(previous, d, review.page_id) ? review : { ...review, review_current: false },
+    ));
     current.current = d;
     setDoc(d);
     dirty.current = true;
@@ -599,8 +604,11 @@ export default function Workspace({
         const number = (current.current?.pages || []).findIndex((p) => p.id === page.id) + 1;
         setReviewProgress(`Memeriksa halaman ${number} (${index + 1}/${pages.length})...`);
         try {
+          if (dirty.current && !(await save())) throw new Error("Simpan perubahan terlebih dahulu.");
+          const snapshot = current.current!;
           const r = await api(endpoint + "/review", "POST", { force, page_id: page.id });
-          setReviews((previous) => [r, ...previous.filter((item) => item.id !== r.id)]);
+          const result = { ...r, review_current: r.review_current && reviewInputUnchanged(snapshot, current.current!, page.id) };
+          setReviews((previous) => [result, ...previous.filter((item) => item.id !== r.id)]);
         } catch (e) {
           failures.push(`Halaman ${number}: ${errorText(e)}`);
           // Errors such as an expired API key or exhausted quota cannot be fixed by trying other pages.
@@ -1623,6 +1631,7 @@ export default function Workspace({
                   current.current = d;
                   setDoc(d);
                   setConflict(false);
+                  setReviews(d.reviews || []);
                   setPanel("");
                   setError("");
                   setSaved("Tersimpan");

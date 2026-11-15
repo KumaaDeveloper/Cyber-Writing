@@ -8,7 +8,7 @@ import { getDocument, saveDocument, writeContent } from "../lib/documents";
 import { checkPage, listPageReviews, reviewSummaryJoin } from "../lib/reviews";
 import { rows, sql, type DB } from "../lib/db";
 import type { reviewDocument } from "../lib/ai";
-import { checkPages } from "../lib/review-runner";
+import { checkPages, reviewInputUnchanged } from "../lib/review-runner";
 const pg = new PGlite();
 const database = drizzle(pg) as unknown as DB;
 const client: SetupClient = { async query(text, values) {
@@ -88,7 +88,7 @@ test("saving an edited second page preserves both reviews, invalidates only that
   assert.ok((await listPageReviews(doc, database)).every((r) => r.is_current));
   assert.equal((await overview(doc.id)).content_version, doc.version);
 });
-test("page reorder reuses saved results, force replaces only its own result, and removed pages stay out of the list", async () => {
+test("page reorder reuses saved results, force saves a new result, and removed pages stay out of the list", async () => {
   let doc = await fixture();
   for (const page of doc.pages) await checkPage(doc, page.id, { database, review });
   await saveDocument(doc.id, { ...doc, pages: [...doc.pages].reverse() }, undefined, undefined, false, database);
@@ -97,7 +97,7 @@ test("page reorder reuses saved results, force replaces only its own result, and
   assert.deepEqual(before.map((r) => r.findings_json[0].page), [1, 2]);
   assert.ok(before.every((r) => r.is_current));
   const forced = await checkPage(doc, doc.pages[0].id, { database, force: true, review: async () => result("KURANG VALID") });
-  assert.equal(forced.id, before[0].id);
+  assert.notEqual(forced.id, before[0].id, "a forced check preserves the earlier saved result");
   assert.equal((await listPageReviews(doc, database))[1].status, "VALID");
   await saveDocument(doc.id, { ...doc, pages: [doc.pages[1]] }, undefined, undefined, false, database);
   doc = await getDocument(doc.id, database);
@@ -132,4 +132,22 @@ test("the client checks one page at a time and retains completed results when th
   assert.deepEqual(order, ["one", "two"]);
   assert.deepEqual(progress, [1, 2]);
   assert.deepEqual(shown, [{ page_id: "one" }]);
+});
+
+test("local edits mark only the affected page stale, while reorder preserves results", async () => {
+  const doc = await fixture();
+  const changed = { ...doc, pages: doc.pages.map((p, i) => i === 1 ? { ...p, title: "Diubah" } : p) };
+  assert.equal(reviewInputUnchanged(doc, changed, doc.pages[0].id), true);
+  assert.equal(reviewInputUnchanged(doc, changed, doc.pages[1].id), false);
+  assert.equal(reviewInputUnchanged(doc, { ...doc, pages: [...doc.pages].reverse() }, doc.pages[0].id), true);
+  assert.equal(reviewInputUnchanged(doc, { ...doc, references: [{ id: "new", title: "Sumber", url: "https://example.com", publisher: "", accessed_at: "" }] }, doc.pages[0].id), false);
+});
+test("empty pages do not call the provider or save an AI result", async () => {
+  let doc = await fixture();
+  await saveDocument(doc.id, { ...doc, pages: [{ ...doc.pages[0], blocks: [] }] }, undefined, undefined, false, database);
+  doc = await getDocument(doc.id, database);
+  let called = false;
+  await assert.rejects(checkPage(doc, doc.pages[0].id, { database, review: async () => { called = true; return result(); } }), (error: any) => error.status === 400);
+  assert.equal(called, false);
+  assert.deepEqual(await listPageReviews(doc, database), []);
 });
