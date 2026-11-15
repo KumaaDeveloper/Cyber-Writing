@@ -37,6 +37,7 @@ import {
 import { cachedPageReview, checkPage, listPageReviews, reviewSummaryJoin } from "@/lib/reviews";
 import { decoratePageReviews } from "@/lib/page-reviews";
 import { queueAssetDeletion, cleanDeletedAssets } from "@/lib/assets";
+import { imageUploadError, MAX_IMAGE_BYTES, MAX_IMAGE_REQUEST_BYTES } from "@/lib/uploads";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -183,16 +184,13 @@ async function handler(
         !process.env.CLOUDINARY_API_KEY
       )
         fail(503, "Penyimpanan gambar belum dikonfigurasi.");
-      if (Number(req.headers.get("content-length") || 0) > 4300000)
-        fail(413, "Ukuran gambar maksimal 4 MB.");
+      if (Number(req.headers.get("content-length") || 0) > MAX_IMAGE_REQUEST_BYTES)
+        fail(413, "Ukuran gambar maksimal 2 MB.");
       const form = await req.formData();
       const file = form.get("file");
-      if (
-        !(file instanceof File) ||
-        file.size > 4 * 1024 * 1024 ||
-        !["image/png", "image/jpeg", "image/webp"].includes(file.type)
-      )
-        fail(400, "Gunakan JPG, PNG, atau WebP maksimal 4 MB.");
+      if (!(file instanceof File)) return fail(400, "Pilih gambar untuk diunggah.");
+      const uploadError = imageUploadError(file);
+      if (uploadError) fail(file.size > MAX_IMAGE_BYTES ? 413 : 400, uploadError);
       const input = Buffer.from(await (file as File).arrayBuffer());
       const metadata = await sharp(input, {
         limitInputPixels: 25000000,

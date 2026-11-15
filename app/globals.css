@@ -3946,3 +3946,97 @@ footer > span:last-child {
 .workspace-header>.workspace-label{display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none}
 @media(max-width:800px){.workspace-header>.workspace-label{top:31px}.workspace-header .workspace-brand{max-width:calc(50% - 48px)}}
 @media(max-width:420px){.workspace-header .brand>span:last-child{display:none}.workspace-header .workspace-brand{max-width:none}}
+
+/* Writing controls: touch targets, contextual table deletion and compact blocks. */
+.block-desktop-actions{display:flex;align-items:center;gap:6px}
+.selected-table-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;padding:6px 10px;border:1px solid #694049;border-radius:6px;background:#251b21}
+.selected-table-actions>span{font-size:12px;color:#c8b8be}
+.selected-table-actions>button{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:8px 10px;border:1px solid #83414b;border-radius:5px;background:#42232a;color:#ffb3ba;font-size:12px}
+.workspace-theme-detail{display:grid;gap:16px;overflow-wrap:anywhere}
+.workspace-theme-detail p{white-space:pre-wrap}
+@media screen and (max-width:800px){
+ .workspace{height:100dvh;min-height:0;display:flex;flex-direction:column}
+ .workspace .mobile-only{display:inline-flex}
+ .workspace-header{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:44px auto;gap:4px 8px;height:auto;min-height:0;padding:6px 12px 8px;flex-shrink:0}
+ .workspace-header>.workspace-label{display:none}
+ .workspace-header .workspace-brand{grid-column:1;grid-row:1;max-width:none;min-width:0;gap:6px}
+ .workspace .brand{font-size:11px;gap:7px;min-width:0}
+ .workspace .brand-symbol{width:28px;height:28px;flex-shrink:0}
+ .workspace-header .brand>span:last-child{display:block}
+ .workspace .brand small{display:none}
+ .workspace-brand>.icon-button{width:40px;height:44px;flex-shrink:0}
+ .workspace-mobile-nav{grid-column:2;grid-row:1;display:flex;align-items:center;gap:4px}
+ .workspace-theme-button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px;border:0;background:transparent;color:#c8c8d2;font-size:12px}
+ .workspace-exit{width:44px;height:44px;color:#bdbdc9}
+ .workspace-actions{grid-column:1/-1;grid-row:2;width:100%;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+ .workspace-actions .btn{min-height:36px;padding:8px 12px;font-size:12px;flex-shrink:0}
+ .workspace .save-state{font-size:11px;max-width:none;min-width:0;margin:0;flex:1}
+ .workspace .save-state>span{overflow-wrap:anywhere}
+ .workspace .document-topbar,.workspace .desktop-back-link{display:none}
+ .workspace .document-area{flex:1;min-height:0;min-width:0}
+ .workspace .document-scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scroll-padding:12px}
+ .workspace .document-wrap{width:100%;max-width:100%;padding:16px 12px 28px}
+ .workspace .document-title-row{align-items:flex-end;gap:8px;margin-bottom:14px}
+ .workspace .document-title-row label{font-size:10px;letter-spacing:.06em}
+ .workspace .document-title-row input.document-title{font-size:19px;margin-top:4px;min-width:0;line-height:1.4}
+ .workspace .document-title-row>.tool-menu{flex:0 0 auto}
+ .workspace .tool-menu-trigger{min-height:44px;padding:9px 10px;font-size:12px}
+ .workspace .tool-menu-insert>.tool-menu-panel{width:min(360px,calc(100vw - 24px));max-height:60dvh}
+ .workspace .insert-tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .workspace .insert-tool-grid button{min-height:44px}
+ .workspace .paper{padding:16px 12px 20px;min-height:320px;border-radius:8px;box-shadow:none;max-width:100%}
+ .workspace .paper-eyebrow{gap:8px;margin-bottom:10px;min-height:44px;font-size:10px}
+ .workspace .page-tools{gap:2px}
+ .workspace .page-tools button{width:36px;height:44px;padding:8px;display:grid;place-items:center}
+ .workspace .paper input.page-title{font-size:23px;line-height:1.4}
+ .workspace .title-rule{margin:12px 0 18px}
+ .workspace .content-block{margin:16px 0;max-width:100%}
+ .workspace .block-controls{margin-bottom:0;padding:0;min-height:36px;gap:8px}
+ .workspace .block-controls>span{font-size:10px}
+ .workspace .block-desktop-actions{display:none}
+ .workspace .block-mobile-actions{margin-left:auto}
+ .workspace .tool-menu-block>.tool-menu-trigger{width:44px;height:44px;min-height:44px;padding:10px;background:transparent;border-color:transparent}
+ .workspace .tool-menu-block>.tool-menu-panel{position:absolute;right:0;top:100%;z-index:31;width:220px;max-width:calc(100vw - 48px);box-shadow:0 12px 30px #0006}
+ .workspace .block-action-list{display:grid;gap:4px}
+ .workspace .block-action-list>button{display:flex;justify-content:flex-start;gap:10px;width:100%;min-height:44px;height:auto;padding:10px;font-size:12px;text-align:left;color:#c5c5d0}
+ .workspace .block-action-list>button:last-child{color:#ff9da5}
+ .workspace .tool-menu-format{margin-bottom:8px}
+ .workspace .tool-menu-format>.tool-menu-trigger{min-height:40px;font-size:12px;padding:8px 10px}
+ .workspace .tool-menu-format .text-toolbar{gap:5px;display:flex;flex-wrap:wrap;overflow:visible}
+ .workspace .tool-menu-format .text-toolbar>button,.workspace .tool-menu-format .color-picker{width:40px;height:44px}
+ .workspace .tool-menu-format .text-toolbar select{min-height:44px;width:120px;font-size:16px}
+ .workspace .table-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .workspace .table-tools button{min-height:44px;padding:8px;font-size:12px}
+ .workspace .rich-editor:not(.read-only) .tiptap{padding:12px;min-height:160px;font-size:16px;line-height:1.7}
+ .workspace .tiptap{max-width:100%;overflow-wrap:anywhere;overflow-x:auto;font-size:16px}
+ .workspace .tiptap table{min-width:300px}
+ .workspace .tiptap td,.workspace .tiptap th{padding:9px;min-width:80px}
+ .workspace .tiptap .tableWrapper{overflow-x:auto;max-width:100%;overscroll-behavior-x:contain}
+ .workspace .selected-table-actions{padding:6px;gap:6px}
+ .workspace .selected-table-actions>button{min-height:44px;font-size:12px}
+ .workspace .image-properties{grid-template-columns:minmax(0,1fr)}
+ .workspace input:not([type=range]):not([type=color]):not(.document-title):not(.page-title),.workspace textarea,.workspace select{font-size:16px}
+ .workspace .image-properties .form-grid{grid-template-columns:minmax(0,1fr)}
+ .workspace .paper-footer{margin-top:28px}
+ .workspace .page-navigation{gap:4px;padding:6px 8px max(6px,env(safe-area-inset-bottom))}
+ .workspace .page-navigation .btn{width:44px;min-width:44px;height:44px;padding:10px}
+ .workspace .page-navigation .btn>span{display:none}
+ .workspace .page-counter{min-height:44px;padding:8px;font-size:12px}
+ .workspace .page-sidebar{position:fixed;left:0;top:0;bottom:0;width:min(300px,calc(100vw - 44px));z-index:40;transform:translateX(-100%);visibility:hidden;transition:transform .2s,visibility .2s;overflow-y:auto;padding-top:max(10px,env(safe-area-inset-top))}
+ .workspace .page-sidebar.open{transform:translateX(0);visibility:visible}
+ .workspace .sidebar-close{align-self:flex-end;width:44px;height:44px;margin-right:12px;flex-shrink:0}
+ .workspace .sidebar-document{padding:8px 20px 18px}
+ .workspace .page-list{flex:1;min-height:120px;overflow-y:auto}
+ .workspace .sidebar-bottom{padding:18px 20px}
+ .workspace .admin-document-bar{display:flex;flex-wrap:wrap;padding:12px;gap:8px}
+ .workspace .admin-document-bar>.btn,.workspace .admin-document-bar>.icon-button,.workspace .admin-document-bar>select{min-height:44px}
+}
+@media print{.selected-table-actions,.block-mobile-actions,.workspace-mobile-nav,.sidebar-close{display:none!important}}
+/* Keep deletion reachable even for a table far down a long text block. */
+.selected-table-actions{position:sticky;top:8px;z-index:10}
+
+@media screen and (max-width:800px){
+ .workspace .content-block:has(.rich-editor)>.block-controls>span{visibility:hidden}
+ .workspace .content-block>.rich-editor>.tool-menu-format{margin-top:-44px;min-height:44px}
+ .workspace .content-block>.rich-editor>.tool-menu-format>.tool-menu-trigger{margin-left:0;margin-right:48px}
+}

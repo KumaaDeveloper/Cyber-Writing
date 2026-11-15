@@ -115,3 +115,9 @@ Validasi revisi ini mencakup 49 tes otomatis, TypeScript dan build produksi. Gem
 64 tes otomatis berhasil, TypeScript berhasil, dan build produksi Next.js 16.4.6 berhasil. Tes database menggunakan PGlite mencakup dua halaman yang diperiksa terpisah, simpan/baca hasil, cache, edit satu halaman, pengurutan ulang, pemeriksaan ulang, penghapusan halaman, kegagalan provider pada halaman kedua, dan penolakan hasil bila konten berubah selama generasi. Migrasi 005 diuji berulang dari indeks unik instalasi lama. Tes AI memastikan tanpa Search tidak otomatis menjadi Kurang Valid, temuan negatif menentukan status, dan vonis negatif tanpa temuan tidak disimpan sebagai VALID.
 
 Panggilan Gemini disimulasikan. Akurasi faktual dengan API pemilik, database Neon produksi, UI browser produksi, dan eksekusi skrip CMD pada Windows belum diuji dalam lingkungan ini. Build lokal melewati setup database karena DATABASE_URL tidak tersedia.
+
+## Validasi revisi mobile
+
+66 tes otomatis berhasil, termasuk klik tepi tabel, munculnya tombol hapus tanpa membuka menu Format teks, penghapusan hanya tabel kedua, retensi teks/tabel lain, dan Undo. Tes unggahan memeriksa batas tepat 2.097.152 byte, penolakan satu byte di atas batas, file kosong, dan tipe file yang tidak didukung. Pemeriksaan TypeScript dan build produksi berhasil.
+
+Pengujian browser dengan viewport 320/390/768/1280 px telah disiapkan tetapi tidak dapat dijalankan: Chromium lokal tidak dapat membuka socket yang diperlukan, dan browser terpisah tidak dapat menjangkau server localhost. Karena itu, tata letak visual dan keyboard di perangkat mobile fisik belum diverifikasi. Tidak ada klaim uji visual browser yang berhasil dalam revisi ini.

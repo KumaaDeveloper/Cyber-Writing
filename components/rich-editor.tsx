@@ -8,6 +8,7 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
+import { closeHistory } from "@tiptap/pm/history";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
@@ -32,6 +33,7 @@ import {
   CheckSquare,
   Highlighter,
   Palette,
+  Trash2,
 } from "lucide-react";
 import { ToolMenu } from "./tool-menu";
 import { safeUrl } from "@/lib/model";
@@ -93,6 +95,16 @@ export default function RichEditor({
   return (
     <div
       className={"rich-editor " + (readOnly ? "read-only" : "")}
+      onClickCapture={(e) => {
+        if (readOnly) return;
+        const target = e.target as HTMLElement;
+        const table = target.closest("table") || (target.classList.contains("tableWrapper") ? target.querySelector("table") : null);
+        // Clicking a cell/table border must select the table as reliably as text.
+        if (table && (target === table || target.matches("td,th,.tableWrapper"))) {
+          const cell = target.closest("td,th") || table.querySelector("td,th");
+          if (cell) editor.chain().focus().setTextSelection(editor.view.posAtDOM(cell, 0) + 1).run();
+        }
+      }}
       onClick={(e) => {
         if (readOnly) {
           const a = (e.target as HTMLElement).closest("a");
@@ -106,9 +118,34 @@ export default function RichEditor({
       {!readOnly && <ToolMenu label="Format teks" variant="format">
         {() => <TextTools editor={editor} />}
       </ToolMenu>}
+      {!readOnly && <SelectedTableActions editor={editor} />}
       <EditorContent editor={editor} />
     </div>
   );
+}
+function SelectedTableActions({ editor }: { editor: Editor }) {
+  const [, render] = useState(0);
+  useEffect(() => {
+    const refresh = () => render((v) => v + 1);
+    editor.on("transaction", refresh);
+    editor.on("focus", refresh);
+    editor.on("blur", refresh);
+    return () => {
+      editor.off("transaction", refresh);
+      editor.off("focus", refresh);
+      editor.off("blur", refresh);
+    };
+  }, [editor]);
+  if (editor.isDestroyed || !editor.isEditable || !editor.isFocused || !editor.isActive("table")) return null;
+  return <div className="selected-table-actions" role="toolbar" aria-label="Tabel dipilih">
+    <span>Tabel dipilih</span>
+    <button type="button" aria-label="Hapus tabel dipilih"
+      onPointerDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => editor.chain().focus().command(({ tr }) => { closeHistory(tr); return true; }).deleteTable().run()}>
+      <Trash2 size={16} /> Hapus tabel
+    </button>
+  </div>;
 }
 export function TextTools({ editor }: { editor: Editor | null }) {
   const [, render] = useState(0);

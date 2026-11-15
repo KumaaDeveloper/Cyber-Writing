@@ -292,3 +292,13 @@ Status negatif wajib memiliki temuan spesifik. Respons negatif tanpa temuan dico
 Migrasi 004 menambah kolom halaman. Migrasi 005 menyelaraskan indeks instalasi lama sehingga pemeriksaan ulang dapat menyimpan hasil baru. Build Production dengan DATABASE_URL menerapkan migrasi otomatis. Preview melewati migrasi otomatis; jalankan migrasi pada database preview bila diperlukan.
 
 Arsip revisi menyertakan TRANSFER-KE-GITHUB.cmd di samping folder cyber-writing. Skrip memakai robocopy /E /IS /IT ke D:\Downloads\Cyber-Writing, mengambil main terbaru, membuat commit perubahan, lalu push ke https://github.com/KumaaDeveloper/Cyber-Writing. Git harus terpasang dan sudah memiliki akses GitHub. Skrip berhenti bila repo tujuan salah atau masih memiliki perubahan lokal yang belum disimpan.
+
+## Revisi mode penulisan mobile
+
+Pada layar hingga 800 px, baris DOKUMEN / Halaman di atas editor disembunyikan. Header memakai dua baris ringkas: menu halaman dan logo di kiri, Tema serta ikon pintu keluar di kanan, lalu status simpan dan tombol kirim. Tautan Beranda dalam sidebar disembunyikan pada mobile. Ikon pintu kembali ke beranda setelah perubahan berhasil disimpan; untuk admin, kembali ke daftar sesi. Tombol Tema membuka tema dan instruksi lengkap.
+
+Pengaturan tiap blok pada mobile berada dalam menu Opsi blok. Menu format membungkus ke beberapa baris dengan ukuran sentuh yang lebih besar. Navigasi halaman bawah menampilkan panah dan penghitung halaman. Tabel lebar digulir di dalam editor, bukan memperlebar halaman. Sidebar memiliki tombol tutup; judul, formulir gambar, dan tindakan admin menyesuaikan lebar layar.
+
+Mengetuk tepi atau sel tabel memunculkan tombol Hapus tabel di luar menu format. Tindakan ini menghapus tabel yang dipilih, mempertahankan teks dan tabel lain, dan dapat dibatalkan lewat Undo.
+
+Batas unggahan gambar adalah 2 MB (2.097.152 byte) per file JPG, PNG, atau WebP. Validasi yang sama dipakai frontend dan server; galeri diperiksa sebelum unggahan dimulai. Server tetap memeriksa format gambar yang sebenarnya. Batas ini berlaku untuk unggahan file; tautan HTTPS tetap merupakan gambar eksternal yang ditampilkan langsung.

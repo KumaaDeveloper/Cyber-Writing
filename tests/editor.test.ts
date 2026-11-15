@@ -163,6 +163,30 @@ test("Insert tools toggle, close on selection/outside/Escape, and local text too
     assert.equal(JSON.stringify(first.getJSON()), firstContent, "formatting stays in the chosen text box");
     await act(async () => secondTrigger.click());
     assert.equal(w.document.querySelector('button[aria-label="Miring"]'), null);
+    // Selecting the table frame exposes deletion without opening Format teks.
+    const table = (value: string) => ({ type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: value }] }] }] }] });
+    await act(async () => {
+      active().commands.setContent({ type: "doc", content: [
+        { type: "paragraph", content: [{ type: "text", text: "Sebelum tabel" }] },
+        table("Pertama"), table("Kedua"),
+        { type: "paragraph", content: [{ type: "text", text: "Sesudah tabel" }] },
+      ] });
+    });
+    const selectedRoot = w.document.querySelectorAll(".rich-editor")[1];
+    await act(async () => {
+      (selectedRoot.querySelectorAll("table")[1] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 40));
+    });
+    const deleteTable = selectedRoot.querySelector<HTMLButtonElement>('[aria-label="Hapus tabel dipilih"]');
+    assert.ok(deleteTable, "table border click exposes a direct delete button");
+    await act(async () => deleteTable.click());
+    assert.equal(selectedRoot.querySelectorAll("table").length, 1);
+    assert.match(active().getText(), /Sebelum tabel/);
+    assert.match(active().getText(), /Sesudah tabel/);
+    assert.match(active().getText(), /Pertama/);
+    assert.doesNotMatch(active().getText(), /Kedua/);
+    await act(async () => { active().commands.undo(); });
+    assert.equal(selectedRoot.querySelectorAll("table").length, 2, "table deletion is undoable");
   } finally {
     await act(async () => {
       root.unmount();

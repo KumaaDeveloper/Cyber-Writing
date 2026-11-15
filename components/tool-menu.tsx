@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, MoreHorizontal, SlidersHorizontal, X } from "lucide-react";
 
 export function ToolMenu({ label = "Tools", variant = "insert", children }: {
   label?: string;
-  variant?: "insert" | "format";
+  variant?: "insert" | "format" | "block";
   children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -35,10 +35,10 @@ export function ToolMenu({ label = "Tools", variant = "insert", children }: {
       aria-label={label} aria-expanded={open} aria-controls={id}
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => setOpen((value) => !value)}>
-      <SlidersHorizontal size={15} />{label}<ChevronDown size={13} />
+      {variant === "block" ? <MoreHorizontal size={18} /> : <><SlidersHorizontal size={15} />{label}<ChevronDown size={13} /></>}
     </button>
     {open && <section id={id} className="tool-menu-panel" aria-label={label}>
-      <div className="tool-group-heading"><strong>{variant === "insert" ? "Tambah konten" : "Format teks"}</strong>
+      <div className="tool-group-heading"><strong>{variant === "insert" ? "Tambah konten" : variant === "block" ? "Atur blok" : "Format teks"}</strong>
         <button type="button" className="icon-button" aria-label={`Tutup ${label.toLowerCase()}`}
           onMouseDown={(e) => e.preventDefault()} onClick={close}><X size={15} /></button>
       </div>

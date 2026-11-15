@@ -36,6 +36,8 @@ import {
   History,
   Download,
   CheckSquare,
+  DoorOpen,
+  BookOpen,
 } from "lucide-react";
 import {
   type DocumentData,
@@ -60,6 +62,7 @@ import {
 } from "./ui";
 import { ToolMenu } from "./tool-menu";
 import { reviewInputUnchanged } from "@/lib/review-runner";
+import { imageUploadError } from "@/lib/uploads";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
 
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
@@ -145,6 +148,14 @@ export default function Workspace({
   const readOnly = (!admin && !doc?.writable) || (admin && !edit);
   readOnlyRef.current = readOnly;
   const localKey = "cw-" + (admin ? "admin-" : "") + "draft-" + id;
+  useEffect(() => {
+    if (!drawer) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDrawer(false);
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [drawer]);
   async function backup(d: FullDoc, isDirty: boolean) {
     try {
       await set(localKey, { doc: d, dirty: isDirty, savedAt: Date.now() });
@@ -479,11 +490,8 @@ export default function Workspace({
     setBusy(true);
     setError("");
     try {
-      if (
-        file.size > 4 * 1024 * 1024 ||
-        !["image/png", "image/jpeg", "image/webp"].includes(file.type)
-      )
-        throw new Error("Gunakan JPG, PNG, atau WebP maksimal 4 MB.");
+      const validation = imageUploadError(file);
+      if (validation) throw new Error(validation);
       const body = new FormData();
       body.append("file", file);
       const r = await api(
@@ -528,14 +536,14 @@ export default function Workspace({
       setError("Maksimal 12 gambar per galeri.");
       return;
     }
+    const invalid = files.map(imageUploadError).find(Boolean);
+    if (invalid) { setError(invalid); return; }
     setBusy(true);
     setError("");
     const images: { id: string; url: string; alt: string; caption: string }[] =
       [];
     try {
       for (const file of files) {
-        if (file.size > 4 * 1024 * 1024)
-          throw new Error("Ukuran gambar maksimal 4 MB.");
         const body = new FormData();
         body.append("file", file);
         const r = await api(
@@ -623,6 +631,13 @@ export default function Workspace({
       setBusy(false);
     }
   }
+  async function leaveWorkspace() {
+    if (dirty.current && !(await save())) {
+      setError("Tunggu sampai perubahan tersimpan sebelum keluar.");
+      return;
+    }
+    router.push(admin ? "/admin/sessions" : "/");
+  }
   return (
     <div className="workspace">
       <header className="workspace-header">
@@ -630,6 +645,8 @@ export default function Workspace({
           <button
             className="icon-button mobile-only"
             aria-label="Daftar halaman"
+            aria-expanded={drawer}
+            aria-controls="workspace-pages"
             onClick={() => setDrawer(true)}
           >
             <Menu />
@@ -674,6 +691,15 @@ export default function Workspace({
             </Button>
           )}
         </div>
+        <nav className="workspace-mobile-nav mobile-only" aria-label="Navigasi penulisan">
+          <button className="workspace-theme-button" type="button" onClick={() => setPanel("theme")} aria-label="Lihat tema penulisan">
+            <BookOpen size={17} /><span>Tema</span>
+          </button>
+          <button className="icon-button workspace-exit" type="button" aria-label={admin ? "Kembali ke daftar sesi" : "Keluar ke beranda"}
+            title={admin ? "Kembali ke daftar sesi" : "Keluar ke beranda"} disabled={busy} onClick={() => void leaveWorkspace()}>
+            <DoorOpen size={20} />
+          </button>
+        </nav>
       </header>
       {drawer && (
         <button
@@ -682,10 +708,11 @@ export default function Workspace({
           onClick={() => setDrawer(false)}
         />
       )}
-      <aside className={"page-sidebar " + (drawer ? "open" : "")}>
+      <aside id="workspace-pages" aria-label="Halaman tulisan" className={"page-sidebar " + (drawer ? "open" : "")}>
+        <button className="icon-button sidebar-close mobile-only" aria-label="Tutup daftar halaman" onClick={() => setDrawer(false)}><X size={20} /></button>
         <div className="sidebar-document">
           <Link
-            className="back-link"
+            className="back-link desktop-back-link"
             href={admin ? "/admin/sessions" : "/"}
             onClick={(e) => {
               if (dirty.current) {
@@ -964,7 +991,8 @@ export default function Workspace({
                 <section key={b.id} className={"content-block block-" + b.type}>
                   {!readOnly && (
                     <div className="block-controls">
-                      <span>{b.type === "text" ? "Teks" : b.type}</span>
+                      <span>{{ text: "Teks", image: "Gambar", gallery: "Galeri", diagram: "Diagram", callout: "Info", warning: "Peringatan", divider: "Pemisah" }[b.type]}</span>
+                      <div className="block-desktop-actions">
                       <button
                         aria-label="Naikkan blok"
                         disabled={i === 0}
@@ -1000,6 +1028,48 @@ export default function Workspace({
                       >
                         <Trash2 size={13} />
                       </button>
+                      </div>
+                      <div className="mobile-only block-mobile-actions">
+                        <ToolMenu label="Opsi blok" variant="block">{(close) => (
+                          <div className="block-action-list" onClick={() => close()}>
+                      <button type="button"
+                        aria-label="Naikkan blok"
+                        disabled={i === 0}
+                        onClick={() => reorderBlock(i, -1)}
+                      >
+                        <ArrowUp size={16} /><span>Naikkan</span>
+                      </button>
+                      <button type="button"
+                        aria-label="Turunkan blok"
+                        disabled={i === page.blocks.length - 1}
+                        onClick={() => reorderBlock(i, 1)}
+                      >
+                        <ArrowDown size={16} /><span>Turunkan</span>
+                      </button>
+                      <button type="button"
+                        aria-label="Duplikasi blok"
+                        onClick={() => {
+                          const blocks = [...page.blocks];
+                          blocks.splice(i + 1, 0, {
+                            ...structuredClone(b),
+                            id: crypto.randomUUID(),
+                          });
+                          changePageData({ ...page, blocks });
+                        }}
+                      >
+                        <Copy size={16} /><span>Duplikasi</span>
+                      </button>
+                      <button type="button"
+                        aria-label="Hapus blok"
+                        onClick={() =>
+                          setConfirmDelete({ type: "block", id: b.id })
+                        }
+                      >
+                        <Trash2 size={16} /><span>Hapus blok</span>
+                      </button>
+                          </div>
+                        )}</ToolMenu>
+                      </div>
                     </div>
                   )}
                   {"content" in b && (
@@ -1200,6 +1270,7 @@ export default function Workspace({
         </div>
         <nav className="page-navigation">
           <Button
+            aria-label="Halaman sebelumnya"
             variant="ghost"
             disabled={pageIndex === 0}
             onClick={() => changePage(pageIndex - 1)}
@@ -1213,6 +1284,7 @@ export default function Workspace({
           <Button
             variant="ghost"
             disabled={pageIndex === doc.pages.length - 1}
+            aria-label="Halaman berikutnya"
             onClick={() => changePage(pageIndex + 1)}
           >
             <span>Berikutnya</span>
@@ -1224,7 +1296,7 @@ export default function Workspace({
         open={insert === "image" || insert === "gallery"}
         onOpenChange={() => setInsert("")}
         title={insert === "gallery" ? "Tambahkan galeri" : "Tambahkan gambar"}
-        description="JPG, PNG, WebP · Maksimal 4 MB per gambar."
+        description="JPG, PNG, WebP · Maksimal 2 MB per gambar."
       >
         <ErrorBox message={error} />
         <label className="upload-zone">
@@ -1430,6 +1502,7 @@ export default function Workspace({
         title={
           {
             references: "Sumber referensi",
+            theme: "Tema penulisan",
             notes: "Catatan pengurus",
             review: "Hasil Cek AI per Halaman",
             history: "Riwayat perubahan",
@@ -1437,6 +1510,7 @@ export default function Workspace({
           }[panel] || "Detail"
         }
       >
+        {panel === "theme" && <div className="workspace-theme-detail"><h3>{doc.theme_title}</h3>{doc.instructions && <p>{doc.instructions}</p>}<small>{doc.session_title}</small></div>}
         {panel === "references" && (
           <>
             {!doc.references.length && (
