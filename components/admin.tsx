@@ -968,10 +968,10 @@ function SubmissionList({
                   </td>
                   <td>
                     <span className="badge">
-                      {r.ai_status || "Belum dicek"}
+                      {r.ai_status ? `${r.ai_checked_pages}/${r.pages} halaman diperiksa` : "Belum dicek"}
                     </span>
-                    {r.ai_status && r.ai_version !== r.content_version && (
-                      <small className="field-error">Ulasan usang</small>
+                    {r.ai_status && (r.ai_version !== r.content_version || r.ai_checked_pages !== r.pages) && (
+                      <small className="field-error">Periksa status tiap halaman</small>
                     )}
                   </td>
                   <td>

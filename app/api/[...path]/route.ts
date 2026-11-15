@@ -27,6 +27,7 @@ import {
   sessionSchema,
   documentSchema,
   sessionOpen,
+  hasContent,
 } from "@/lib/model";
 import {
   authorizeDocument,
@@ -34,7 +35,8 @@ import {
   saveDocument,
   lockDocument,
 } from "@/lib/documents";
-import { cachedPageReview, checkPage, listPageReviews, reviewSummaryJoin } from "@/lib/reviews";
+import { reviewDocument } from "@/lib/ai";
+import { decoratePageReviews, pageReviewFingerprint } from "@/lib/page-reviews";
 import { queueAssetDeletion, cleanDeletedAssets } from "@/lib/assets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -390,7 +392,7 @@ async function handler(
           );
           const where = sql`(${q}='' OR w.name ILIKE ${"%" + q + "%"} OR w.nim ILIKE ${"%" + q + "%"}) AND (${session}='' OR s.session_id::text=${session}) AND (${status}='' OR s.status=${status}) AND (${theme}='' OR t.title=${theme}) AND (NOT ${star} OR s.is_starred) AND (NOT ${ai} OR r.id IS NOT NULL)`;
           const data = await rows(
-            sql`SELECT s.id,s.title,s.status,s.is_starred,s.updated_at,s.content_version,w.name,w.nim,w.membership_status,w.department,t.title AS theme_title,ws.title AS session_title,r.status AS ai_status,r.content_version AS ai_version,(SELECT count(*)::int FROM submission_pages p WHERE p.submission_id=s.id) AS pages,count(*) OVER()::int AS total FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id ${reviewSummaryJoin} WHERE ${where} ORDER BY s.updated_at DESC LIMIT 15 OFFSET ${(page - 1) * 15}`,
+            sql`SELECT s.id,s.title,s.status,s.is_starred,s.updated_at,s.content_version,w.name,w.nim,w.membership_status,w.department,t.title AS theme_title,ws.title AS session_title,r.status AS ai_status,r.content_version AS ai_version,(SELECT count(*)::int FROM submission_pages p WHERE p.submission_id=s.id) AS pages,(SELECT count(DISTINCT p.id)::int FROM submission_pages p JOIN ai_reviews ar ON ar.page_id=p.id WHERE p.submission_id=s.id) AS ai_checked_pages,count(*) OVER()::int AS total FROM submissions s JOIN writers w ON w.id=s.writer_id JOIN session_themes t ON t.id=s.theme_id JOIN writing_sessions ws ON ws.id=s.session_id LEFT JOIN LATERAL (SELECT id,status,content_version FROM ai_reviews WHERE submission_id=s.id AND page_id IS NOT NULL ORDER BY checked_at DESC LIMIT 1) r ON true WHERE ${where} ORDER BY s.updated_at DESC LIMIT 15 OFFSET ${(page - 1) * 15}`,
           );
           return json({ items: data, total: data[0]?.total || 0, page });
         }
@@ -403,7 +405,13 @@ async function handler(
               ),
             );
           const doc = await getDocument(target);
-          return json({ ...doc, reviews: await listPageReviews(doc) });
+          const reviews = await rows<{ page_id: string | null; content_hash: string | null }>(
+            sql`SELECT * FROM ai_reviews WHERE submission_id=${target} ORDER BY checked_at DESC LIMIT 120`,
+          );
+          return json({
+            ...doc,
+            reviews: decoratePageReviews(doc, reviews),
+          });
         }
         if (method === "PUT")
           return json(
@@ -461,15 +469,27 @@ async function handler(
         }
         if (method === "POST" && sub === "review") {
           const doc = await getDocument(target);
-          const b = z.object({ page_id: z.uuid(), force: z.boolean().optional() }).parse(await readJson(req));
-          const cached = await cachedPageReview(doc, b.page_id);
-          if (!cached || b.force) {
-            await limit("ai:" + a.id, 120, 3600);
-            await limit("ai-page:" + target + ":" + b.page_id, 2, 60);
-          }
-          await checkPage(doc, b.page_id, { force: b.force });
-          if (!cached || b.force) await audit(a.id, "submission.review.page", target);
-          return json({ items: await listPageReviews(await getDocument(target)) });
+          const b = z
+            .object({ page_id: z.uuid(), force: z.boolean().optional() })
+            .parse(await readJson(req));
+          const pageIndex = doc.pages.findIndex((page) => page.id === b.page_id);
+          if (pageIndex < 0) fail(404, "Halaman tulisan tidak ditemukan.");
+          const page = doc.pages[pageIndex];
+          if (!hasContent([page])) fail(400, "Halaman belum memiliki materi untuk diperiksa.");
+          const contentHash = pageReviewFingerprint(doc, page);
+          const [cached] = await rows(
+            sql`SELECT * FROM ai_reviews WHERE submission_id=${target} AND page_id=${page.id} AND content_hash=${contentHash} ORDER BY checked_at DESC LIMIT 1`,
+          );
+          if (cached && !b.force) return json({ ...cached, review_current: true });
+          await limit("ai:" + a.id, 90, 3600);
+          await limit("ai-doc:" + target + ":" + b.page_id, 2, 60);
+          const result = await reviewDocument({ ...doc, pages: [page] });
+          const findings = result.findings.map((finding) => ({ ...finding, page: pageIndex + 1 }));
+          const [r] = await rows(
+            sql`INSERT INTO ai_reviews(submission_id,content_version,page_id,page_number,content_hash,status,summary,findings_json,sources_json,search_html,model_name) VALUES(${target},${doc.version},${page.id},${pageIndex + 1},${contentHash},${result.status},${result.summary},${JSON.stringify(findings)}::jsonb,${JSON.stringify(result.sources)}::jsonb,${result.search_html},${result.model}) RETURNING *`,
+          );
+          await audit(a.id, "submission.review.page", page.id);
+          return json({ ...r, review_current: true });
         }
         if (method === "DELETE") {
           await db().transaction(async (tx) => {

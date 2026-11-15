@@ -59,8 +59,6 @@ import {
   downloadJson,
 } from "./ui";
 import { ToolMenu } from "./tool-menu";
-import { AIResults } from "./ai-results";
-import { checkPages } from "@/lib/review-runner";
 const RichEditor = dynamic(() => import("./rich-editor"), { ssr: false });
 
 const Diagram = dynamic(() => import("./diagram"), { ssr: false });
@@ -156,12 +154,6 @@ export default function Workspace({
     }
   }
   function update(d: FullDoc) {
-    const previous = current.current;
-    if (previous) {
-      const sharedChanged = previous.title !== d.title || previous.theme_title !== d.theme_title || JSON.stringify(previous.references) !== JSON.stringify(d.references);
-      setReviews((items) => items.map((review) => sharedChanged || JSON.stringify(previous.pages.find((page) => page.id === review.page_id)) !== JSON.stringify(d.pages.find((page) => page.id === review.page_id))
-        ? { ...review, is_current: false } : review));
-    }
     current.current = d;
     setDoc(d);
     dirty.current = true;
@@ -591,23 +583,36 @@ export default function Workspace({
     setImageUrl("");
     setInsert("");
   }
-  async function review(force = false) {
+  async function review(force = false, onlyPageId?: string) {
     setBusy(true);
     setError("");
+    setPanel("review");
     try {
       if (dirty.current && !(await save()))
         throw new Error("Simpan perubahan terlebih dahulu.");
-      setPanel("review");
-      await checkPages(current.current!.pages,
-        (pageId) => api(endpoint + "/review", "POST", { force, page_id: pageId }),
-        setReviews,
-        (index, total) => setReviewProgress(`Memeriksa ${index}/${total}...`),
+      const pages = (current.current?.pages || []).filter(
+        (page) => hasContent([page]) && (!onlyPageId || page.id === onlyPageId),
       );
+      if (!pages.length) throw new Error("Tidak ada materi pada halaman yang dipilih.");
+      const failures: string[] = [];
+      for (const [index, page] of pages.entries()) {
+        const number = (current.current?.pages || []).findIndex((p) => p.id === page.id) + 1;
+        setReviewProgress(`Memeriksa halaman ${number} (${index + 1}/${pages.length})...`);
+        try {
+          const r = await api(endpoint + "/review", "POST", { force, page_id: page.id });
+          setReviews((previous) => [r, ...previous.filter((item) => item.id !== r.id)]);
+        } catch (e) {
+          failures.push(`Halaman ${number}: ${errorText(e)}`);
+          // Errors such as an expired API key or exhausted quota cannot be fixed by trying other pages.
+          if (e instanceof APIError && [401, 429, 503, 504].includes(e.status)) break;
+        }
+      }
+      if (failures.length) setError(failures.join(" · "));
     } catch (e) {
       setError(errorText(e));
     } finally {
-      setBusy(false);
       setReviewProgress("");
+      setBusy(false);
     }
   }
   return (
@@ -798,7 +803,7 @@ export default function Workspace({
                   onClick={() => review()}
                 >
                   <Sparkles size={15} />
-                  {busy ? reviewProgress || "Memeriksa..." : "Cek AI"}
+                  {busy ? "Memeriksa..." : "Cek AI"}
                 </Button>
                 <button
                   className="icon-button"
@@ -1418,7 +1423,7 @@ export default function Workspace({
           {
             references: "Sumber referensi",
             notes: "Catatan pengurus",
-            review: "Pemeriksaan AI",
+            review: "Hasil Cek AI per Halaman",
             history: "Riwayat perubahan",
             conflict: "Pulihkan perubahan",
           }[panel] || "Detail"
@@ -1514,12 +1519,68 @@ export default function Workspace({
         )}
         {panel === "review" && (
           <>
-            {reviewProgress && <p className="muted" role="status">{reviewProgress}</p>}
-            <AIResults pages={doc.pages} reviews={reviews} />
-            <Button disabled={busy} onClick={() => review(true)}>
+            {reviewProgress && <p className="review-progress" role="status">{reviewProgress}</p>}
+            <p className="muted">Setiap halaman diperiksa dan disimpan secara terpisah.</p>
+            {doc.pages.map((p, pageNumber) => {
+              const pageReviews = reviews.filter((r) => r.page_id === p.id);
+              const r = pageReviews.find((item) => item.review_current) || pageReviews[0];
+              const filled = hasContent([p]);
+              return (
+                <div className="review-result" key={p.id}>
+                  <div className="review-page-heading">
+                    <strong>Halaman {pageNumber + 1} · {p.title || "Tanpa judul"}</strong>
+                    {r && <span className="badge">{r.status}</span>}
+                  </div>
+                  {!filled ? (
+                    <p className="muted">Belum ada materi pada halaman ini.</p>
+                  ) : !r ? (
+                    <p className="muted">Belum diperiksa.</p>
+                  ) : (
+                    <>
+                      <small>Disimpan {date(r.checked_at)}</small>
+                      {!r.review_current && (
+                        <div className="warning-banner">Materi halaman ini berubah sejak pemeriksaan terakhir.</div>
+                      )}
+                      {(r.findings_json || []).length === 0 && (
+                        <p className="muted">Tidak ada masalah faktual yang ditandai AI pada halaman ini.</p>
+                      )}
+                      {(r.findings_json || []).map((f: any, j: number) => (
+                        <div className="finding" key={j}>
+                          <strong>{f.status}</strong>
+                          <blockquote>{f.claim}</blockquote>
+                          <p>{f.reason}</p>
+                        </div>
+                      ))}
+                      {(r.sources_json || []).map((s: any, j: number) => (
+                        <a className="source-link" key={j} href={s.url} target="_blank" rel="noopener noreferrer">
+                          {s.title} ↗
+                        </a>
+                      ))}
+                      {pageReviews.length > 1 && (
+                        <details className="review-history">
+                          <summary>{pageReviews.length - 1} pemeriksaan sebelumnya</summary>
+                          {pageReviews.filter((entry) => entry.id !== r.id).map((entry) => (
+                            <div key={entry.id} className="review-history-entry">
+                              <strong>{date(entry.checked_at)} · {entry.status}</strong>
+                            </div>
+                          ))}
+                        </details>
+                      )}
+                    </>
+                  )}
+                  {filled && (
+                    <Button variant="secondary" disabled={busy} onClick={() => review(true, p.id)}>
+                      <Sparkles size={14} /> Periksa ulang halaman {pageNumber + 1}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+            <Button disabled={busy || !doc.pages.some((p) => hasContent([p]))} onClick={() => review(true)}>
               <Sparkles size={16} />
-              {busy ? reviewProgress || "Memeriksa..." : "Cek ulang"}
+              {busy ? "Memeriksa..." : "Periksa ulang semua halaman"}
             </Button>
+            <p className="muted">Hasil AI membantu peninjauan. Keputusan akhir tetap pada pengurus.</p>
             <ErrorBox message={error} />
           </>
         )}

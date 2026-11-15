@@ -265,7 +265,7 @@ Backup database dan retensi data peserta diatur pemilik aplikasi melalui Neon. J
 
 ## Revisi free tier dan kontrol editor
 
-Default model adalah `gemini-3.5-flash-lite`. Di Vercel ubah `GEMINI_MODEL` ke nilai tersebut; biarkan `GEMINI_SEARCH_GROUNDING` kosong atau `false`, lalu Redeploy. Google mencantumkan generasi teks model ini pada free tier, tetapi Search grounding tidak tersedia pada tier itu. Karena itu aplikasi tidak lagi mengaktifkan Search secara default. Pemeriksaan tanpa Search menggunakan pengetahuan model dan materi yang dikirim; hasil dinilai berdasarkan isi dan pengetahuan model, tanpa sumber hasil karangan model. Kuota dan akses project tetap mengikuti Google. Referensi: https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite
+Default model adalah `gemini-3.5-flash-lite`. Di Vercel ubah `GEMINI_MODEL` ke nilai tersebut; biarkan `GEMINI_SEARCH_GROUNDING` kosong atau `false`, lalu Redeploy. Google mencantumkan generasi teks model ini pada free tier, tetapi Search grounding tidak tersedia pada tier itu. Karena itu aplikasi tidak lagi mengaktifkan Search secara default. Pemeriksaan tanpa Search menggunakan pengetahuan model dan materi yang dikirim; hasil diberi penanda belum terverifikasi dari internet, tanpa sumber hasil karangan model. Kuota dan akses project tetap mengikuti Google. Referensi: https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite
 
 NIM disaring menjadi digit ASCII saat mengetik maupun paste; nol di depan tetap dipertahankan dan validasi server tetap berlaku. Tombol pada box sesi kini satu grup dengan jarak 8px. Menu Tools utama berupa dropdown tetap dekat tombol; format teks ditangani secara lokal di tiap text box.
 
@@ -275,10 +275,10 @@ Mode tanpa Search sekarang memeriksa isi tulisan dalam satu request structured J
 
 Ctrl+Z dan Ctrl+Y memakai riwayat editor yang sama dengan tombol Undo/Redo, tanpa teks petunjuk shortcut pada UI. Label Workspace dipusatkan di header dan pemisah vertikal di sebelah logo dihapus.
 
-## Pemeriksaan AI per halaman
+## Pembaruan Cek AI per halaman
 
-Tombol **Cek AI** memeriksa seluruh halaman satu per satu. Tiap permintaan mengirim satu halaman dan langsung menyimpan hasilnya di database; kegagalan halaman berikutnya tidak menghapus hasil yang sudah berhasil. Menekan Cek AI kembali memakai hasil tersimpan untuk halaman yang isinya sama. Cek ulang menjalankan pemeriksaan baru. Halaman yang diedit ditandai usang, sedangkan hasil halaman lain tetap berlaku. Nomor hasil mengikuti halaman setelah pengurutan ulang.
-
-Migrasi `004_page_reviews.sql` menambah ID halaman, nomor halaman dan fingerprint konten pada ai_reviews. Hasil lama satu dokumen tetap disimpan tetapi tidak dipakai sebagai hasil per halaman. Riwayat pemeriksaan tidak memiliki FK ke submission_pages karena penyimpanan editor mengganti baris halaman dengan ID logis yang sama. Perubahan selama panggilan AI ditolak sebelum hasil disimpan. Status ringkasan daftar tulisan memperhitungkan semua halaman: pemeriksaan parsial ditandai BELUM LENGKAP.
-
-Ringkasan paragraf, bagian Saran dan tombol ikon mata di samping pemeriksaan dihapus dari tampilan. Hasil menampilkan status, klaim dan alasan per halaman. Tidak ada lagi penurunan otomatis ke KURANG VALID hanya karena Search dimatikan. VALID berarti klaim dinilai benar oleh model; sumber web hanya berasal dari metadata Search yang benar-benar tersedia. Prompt membedakan prinsip mapan, klaim spesifik tanpa bukti dan kesalahan faktual, serta tidak menerima atau menolak tulisan semata-mata karena berasal dari ChatGPT. Ini memperbaiki aturan penilaian; akurasi faktual model tetap perlu ditinjau pada layanan nyata.
+- Label tombol menjadi **Cek AI** tanpa tombol ikon mata di sampingnya. Klik **Cek AI** membuka hasil dan memeriksa **setiap halaman berisi materi satu per satu**; hasil tiap halaman langsung disimpan di database dan tetap tersedia setelah halaman dimuat ulang.
+- Hasil dipisah menjadi Halaman 1, Halaman 2, dst. Pengurus dapat memeriksa ulang satu halaman atau semua halaman. Pemeriksaan yang sudah ada dengan konten sama digunakan ulang secara otomatis; perubahan halaman lain tidak membatalkan hasil halaman yang tidak berubah.
+- Pemeriksaan tidak lagi memaksa **KURANG VALID** hanya karena Google Search tidak aktif/tidak ada sitasi. Status mengikuti masalah faktual yang spesifik. Paragraf ringkasan review (termasuk teks generik soal pemeriksaan tanpa web) serta label **Saran:** dihapus dari tampilan hasil; alasan tiap temuan faktual tetap tersedia.
+- Migrasi baru `db/004_page_reviews.sql` menambahkan keterkaitan halaman dan sidik konten pada hasil AI. Data review lama tidak dihapus, tetapi hasil lama yang hanya mencakup seluruh dokumen tidak ditampilkan sebagai review halaman baru.
+- Setelah mengunggah pembaruan, jalankan `npm run build` pada Production dengan `DATABASE_URL` yang benar agar migrasi diterapkan (atau `npm run db:migrate`). Tanpa migrasi tersebut, endpoint Cek AI per halaman belum dapat bekerja. Gemini tetap membutuhkan `GEMINI_API_KEY` yang aktif.
