@@ -295,9 +295,9 @@ Arsip revisi menyertakan TRANSFER-KE-GITHUB.cmd di samping folder cyber-writing.
 
 ## Revisi mode penulisan mobile
 
-Pada layar hingga 800 px, baris DOKUMEN / Halaman di atas editor disembunyikan. Header memakai dua baris ringkas: menu halaman dan logo di kiri, Tema serta ikon pintu keluar di kanan, lalu status simpan dan tombol kirim. Tautan Beranda dalam sidebar disembunyikan pada mobile. Ikon pintu kembali ke beranda setelah perubahan berhasil disimpan; untuk admin, kembali ke daftar sesi. Tombol Tema membuka tema dan instruksi lengkap.
+Pada layar hingga 800 px, baris DOKUMEN / Halaman di atas editor disembunyikan. Header menampilkan menu halaman dan logo di kiri, tombol kirim di kanan, serta status penyimpanan di baris bawah. Tombol Tema dan keluar di pojok kanan header dihapus. Tautan Beranda dalam sidebar disembunyikan pada mobile. Ikon pintu berpanah berada di pojok kanan bawah sidebar, di samping informasi tema; keluar dilakukan setelah perubahan berhasil disimpan. Untuk admin, tombol kembali ke daftar sesi.
 
-Pengaturan tiap blok pada mobile berada dalam menu Opsi blok. Menu format membungkus ke beberapa baris dengan ukuran sentuh yang lebih besar. Navigasi halaman bawah menampilkan panah dan penghitung halaman. Tabel lebar digulir di dalam editor, bukan memperlebar halaman. Sidebar memiliki tombol tutup; judul, formulir gambar, dan tindakan admin menyesuaikan lebar layar.
+Tombol titik tiga/Opsi blok dihapus dari editor mobile. Menu Format teks dan Tools tetap tersedia. Menu format membungkus ke beberapa baris dengan ukuran sentuh yang lebih besar. Navigasi halaman bawah menampilkan panah dan penghitung halaman. Tabel lebar digulir di dalam editor, bukan memperlebar halaman. Sidebar memiliki tombol tutup, daftar halaman yang dapat digulir, tombol Tambah halaman tepat setelah daftar, dan area tema/keluar di bawah. Judul, formulir gambar, dan tindakan admin menyesuaikan lebar layar.
 
 Mengetuk tepi atau sel tabel memunculkan tombol Hapus tabel di luar menu format. Tindakan ini menghapus tabel yang dipilih, mempertahankan teks dan tabel lain, dan dapat dibatalkan lewat Undo.
 

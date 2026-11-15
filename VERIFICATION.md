@@ -121,3 +121,9 @@ Panggilan Gemini disimulasikan. Akurasi faktual dengan API pemilik, database Neo
 66 tes otomatis berhasil, termasuk klik tepi tabel, munculnya tombol hapus tanpa membuka menu Format teks, penghapusan hanya tabel kedua, retensi teks/tabel lain, dan Undo. Tes unggahan memeriksa batas tepat 2.097.152 byte, penolakan satu byte di atas batas, file kosong, dan tipe file yang tidak didukung. Pemeriksaan TypeScript dan build produksi berhasil.
 
 Pengujian browser dengan viewport 320/390/768/1280 px telah disiapkan tetapi tidak dapat dijalankan: Chromium lokal tidak dapat membuka socket yang diperlukan, dan browser terpisah tidak dapat menjangkau server localhost. Karena itu, tata letak visual dan keyboard di perangkat mobile fisik belum diverifikasi. Tidak ada klaim uji visual browser yang berhasil dalam revisi ini.
+
+## Revisi penempatan navigasi mobile
+
+Header tidak lagi memuat tombol Tema atau keluar. Ikon keluar berpanah dipindahkan ke kanan bawah sidebar, menggunakan penyimpanan sebelum navigasi yang sama. Daftar halaman dapat digulir, tombol tambah berada setelah daftar, dan informasi tema berada di bagian bawah. Menu titik tiga beserta kode/CSS yang tidak terpakai dihapus; toolbar Format teks tetap tersedia pada mobile. Tampilan desktop tetap menyediakan pengaturan blok.
+
+66 tes otomatis berhasil dan build produksi beserta pemeriksaan TypeScript berhasil. Perubahan tata letak berdasarkan screenshot yang diberikan; pengujian visual pada browser/perangkat mobile fisik belum dilakukan.

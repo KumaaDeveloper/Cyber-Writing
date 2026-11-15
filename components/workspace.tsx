@@ -36,8 +36,7 @@ import {
   History,
   Download,
   CheckSquare,
-  DoorOpen,
-  BookOpen,
+  LogOut,
 } from "lucide-react";
 import {
   type DocumentData,
@@ -691,15 +690,6 @@ export default function Workspace({
             </Button>
           )}
         </div>
-        <nav className="workspace-mobile-nav mobile-only" aria-label="Navigasi penulisan">
-          <button className="workspace-theme-button" type="button" onClick={() => setPanel("theme")} aria-label="Lihat tema penulisan">
-            <BookOpen size={17} /><span>Tema</span>
-          </button>
-          <button className="icon-button workspace-exit" type="button" aria-label={admin ? "Kembali ke daftar sesi" : "Keluar ke beranda"}
-            title={admin ? "Kembali ke daftar sesi" : "Keluar ke beranda"} disabled={busy} onClick={() => void leaveWorkspace()}>
-            <DoorOpen size={20} />
-          </button>
-        </nav>
       </header>
       {drawer && (
         <button
@@ -771,6 +761,16 @@ export default function Workspace({
           <span className="eyebrow">TEMA TERPILIH</span>
           <strong>{doc.theme_title}</strong>
           {doc.instructions && <p>{doc.instructions}</p>}
+          <button
+            className="icon-button sidebar-exit mobile-only"
+            type="button"
+            aria-label={admin ? "Kembali ke daftar sesi" : "Keluar ke beranda"}
+            title={admin ? "Kembali ke daftar sesi" : "Keluar ke beranda"}
+            disabled={busy}
+            onClick={() => void leaveWorkspace()}
+          >
+            <LogOut size={21} />
+          </button>
         </div>
       </aside>
       <main className="document-area">
@@ -1028,47 +1028,6 @@ export default function Workspace({
                       >
                         <Trash2 size={13} />
                       </button>
-                      </div>
-                      <div className="mobile-only block-mobile-actions">
-                        <ToolMenu label="Opsi blok" variant="block">{(close) => (
-                          <div className="block-action-list" onClick={() => close()}>
-                      <button type="button"
-                        aria-label="Naikkan blok"
-                        disabled={i === 0}
-                        onClick={() => reorderBlock(i, -1)}
-                      >
-                        <ArrowUp size={16} /><span>Naikkan</span>
-                      </button>
-                      <button type="button"
-                        aria-label="Turunkan blok"
-                        disabled={i === page.blocks.length - 1}
-                        onClick={() => reorderBlock(i, 1)}
-                      >
-                        <ArrowDown size={16} /><span>Turunkan</span>
-                      </button>
-                      <button type="button"
-                        aria-label="Duplikasi blok"
-                        onClick={() => {
-                          const blocks = [...page.blocks];
-                          blocks.splice(i + 1, 0, {
-                            ...structuredClone(b),
-                            id: crypto.randomUUID(),
-                          });
-                          changePageData({ ...page, blocks });
-                        }}
-                      >
-                        <Copy size={16} /><span>Duplikasi</span>
-                      </button>
-                      <button type="button"
-                        aria-label="Hapus blok"
-                        onClick={() =>
-                          setConfirmDelete({ type: "block", id: b.id })
-                        }
-                      >
-                        <Trash2 size={16} /><span>Hapus blok</span>
-                      </button>
-                          </div>
-                        )}</ToolMenu>
                       </div>
                     </div>
                   )}
@@ -1502,7 +1461,6 @@ export default function Workspace({
         title={
           {
             references: "Sumber referensi",
-            theme: "Tema penulisan",
             notes: "Catatan pengurus",
             review: "Hasil Cek AI per Halaman",
             history: "Riwayat perubahan",
@@ -1510,7 +1468,6 @@ export default function Workspace({
           }[panel] || "Detail"
         }
       >
-        {panel === "theme" && <div className="workspace-theme-detail"><h3>{doc.theme_title}</h3>{doc.instructions && <p>{doc.instructions}</p>}<small>{doc.session_title}</small></div>}
         {panel === "references" && (
           <>
             {!doc.references.length && (
